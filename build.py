@@ -275,10 +275,10 @@ def main():
         prev_meta = metas[i - 1] if i > 0 else None
         next_meta = metas[i + 1] if i + 1 < len(metas) else None
         out = OUT / f"lecture_{meta['num']:02d}.html"
-        out.write_text(page(meta, body, script, css, prev_meta, next_meta, ""))
+        out.write_text("<!doctype html>\n" + page(meta, body, script, css, prev_meta, next_meta, ""))
         print("wrote", out.relative_to(ROOT))
     index_html = index_page(metas, css)
-    (ROOT / "index.html").write_text(index_html)
+    (ROOT / "index.html").write_text("<!doctype html>\n" + index_html)
     print("wrote index.html")
     site = ROOT / "site"
     site.mkdir(exist_ok=True)
