@@ -3,7 +3,8 @@
 Stanford CS336《从零构建语言模型》全部 17 讲的中文详解笔记（HTML）。
 每一讲先从第一性原理提出核心问题，再沿官方讲义展开推导，最后给出要点和自测题。
 
-- 打开 `index.html` 查看目录，或直接打开 `lectures/lecture_XX.html`。
+- 在线阅读（GitHub Pages）：<https://neumelon.github.io/cs336/>
+- 本地：打开 `index.html` 查看目录，或直接打开 `lectures/lecture_XX.html`。
 - 内容依据官方讲义 <https://github.com/stanford-cs336/lectures>（`lecture_XX.py` / `lecture_XX.pdf`）整理；
   标注为“第一性原理”“补充”的部分是笔记作者的推导和解释。
 
