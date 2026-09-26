@@ -1,0 +1,645 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第10课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_09.html">← 第9课 Scaling laws（一）</a><a href="lecture_11.html">第11课 Scaling laws（二） →</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 10</div>
+  <h1>推理：为什么慢，以及怎样变快</h1>
+  <p class="lede">训练是一次性成本，推理要重复无数次：聊天、智能体、评测、强化学习的采样都要推理。这一课先用算术强度说明推理为什么是 memory-bound 的，推导延迟与吞吐的权衡；然后讲三类加速方法：有损的捷径（缩小 KV cache、量化、剪枝与蒸馏）、无损的捷径（投机采样）、以及应对动态负载的系统技术（连续批处理、PagedAttention）。</p>
+  <div class="meta"><span><b>对应源码</b> lecture_10.py</span><span><b>对应作业</b> —</span><span><b>下一课</b> Scaling laws（二）</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#fp">1. 从第一性原理出发</a></li>
+<li><a href="#landscape">2. 推理的全景</a><ol>
+<li><a href="#metrics">“快”是什么意思</a></li>
+</ol></li>
+<li><a href="#intensity">3. 推理的算术强度</a><ol>
+<li><a href="#ai-matmul">回顾：一次矩阵乘法</a></li>
+<li><a href="#kvcache">KV cache</a></li>
+<li><a href="#ai-mlp">MLP 层</a></li>
+<li><a href="#ai-attn">注意力层</a></li>
+</ol></li>
+<li><a href="#latency">4. 延迟与吞吐</a></li>
+<li><a href="#kv-reduce">5. 有损捷径一：缩小 KV cache</a><ol>
+<li><a href="#gqa">分组查询注意力（GQA）</a></li>
+<li><a href="#mla">多头潜在注意力（MLA）</a></li>
+<li><a href="#cla">跨层注意力（CLA）</a></li>
+<li><a href="#local">局部（滑动窗口）注意力</a></li>
+<li><a href="#dsv4">DeepSeek V4 的注意力</a></li>
+</ol></li>
+<li><a href="#quant">6. 有损捷径二：量化</a></li>
+<li><a href="#prune">7. 有损捷径三：剪枝与蒸馏</a></li>
+<li><a href="#spec">8. 无损捷径：投机采样</a></li>
+<li><a href="#dynamic">9. 应对动态负载</a><ol>
+<li><a href="#cb">连续批处理（Orca）</a></li>
+<li><a href="#paged">PagedAttention（vLLM）</a></li>
+</ol></li>
+<li><a href="#summary">10. 本课要点</a></li>
+<li><a href="#quiz">11. 自测题</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>自回归生成必须串行</strong>：第 t+1 个 token 依赖第 t 个 token，所以生成阶段不能像训练那样沿序列并行。每一步只处理每个序列的 1 个新 token。</p>
+    <p><strong>每一步都要读一遍全部权重和 KV cache</strong>，但每个权重只参与 B 次（batch 大小）乘加。所以生成阶段的算术强度约为 B，而 H100 需要约 295 才能跑满算力。只要 B 不够大，推理就是 memory-bound 的。</p>
+    <p><strong>推论</strong>：推理的耗时 ≈ 需要读取的字节数 ÷ 显存带宽。一切加速方法要么<strong>减少要读的字节</strong>（更小的 KV cache、更低的精度、更小的模型），要么<strong>让每次读取做更多事</strong>（更大的 batch、一次验证多个 token 的投机采样），要么<strong>更好地管理显存</strong>（分页、共享前缀）让 batch 变大。</p>
+  </div>
+</section>
+
+<section id="landscape">
+  <h2><span class="num">02</span>推理的全景</h2>
+  <p>推理出现在很多地方：实际使用（聊天机器人、代码补全、智能体、批量数据处理）、模型评测（如指令遵循）、强化学习（采样大量生成，再打分）。</p>
+  <p><strong>为什么效率重要</strong>：训练是一次性成本，推理会重复很多次。OpenAI 每天处理约 8.6T token；作为对比，DeepSeek V4 的训练数据是 32T token。聊天场景中大部分 token 是给人看的（人是瓶颈）；而智能体是“查询 → 内部推理轨迹 → 给人的输出”，生成的 token 数可以无限增长。生成的 token 数就是花掉的算力。</p>
+  <ul>
+    <li>做推理的公司：闭源模型提供方（OpenAI、Anthropic、Google 等），开放模型托管方（Together、Fireworks、Baseten、DeepInfra、Groq、Cerebras 等）。</li>
+    <li>开源推理引擎：<strong>vLLM</strong>（伯克利，首创 PagedAttention，流行的默认选择）、<strong>SGLang</strong>（伯克利，首创 RadixAttention，适合智能体负载）、<strong>TensorRT-LLM</strong>（NVIDIA，针对 GPU 深度优化）、<strong>llama.cpp</strong>（纯 C++，支持 CPU，可本地运行）。</li>
+  </ul>
+  <h3 id="metrics">“快”是什么意思</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>指标</th><th>含义</th><th>关心它的场景</th></tr></thead>
+      <tbody>
+        <tr><td>首 token 时间（TTFT）</td><td>用户等多久才看到第一个 token</td><td>交互式应用</td></tr>
+        <tr><td>延迟（秒/token）</td><td>对<strong>单个</strong>请求，token 出现得多快</td><td>交互式应用</td></tr>
+        <tr><td>吞吐（token/秒）</td><td>对<strong>很多</strong>请求，总共生成得多快</td><td>批处理</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>训练（监督）时能看到所有 token，可以沿序列并行（Transformer 里就是矩阵乘法）；推理时必须顺序生成，无法沿生成方向并行，所以更难用满算力。</p>
+</section>
+
+<section id="intensity">
+  <h2><span class="num">03</span>推理的算术强度</h2>
+  <p>记号（类似 einops）：B = batch，T = 序列，D = 模型维度，H = 头维度，F = 4D（MLP 上投影维度），D = N·H（N 个头），N = K·G（GQA：K 组），S = 条件 token 数。</p>
+  <h3 id="ai-matmul">回顾：一次矩阵乘法</h3>
+  <div class="derive">
+    <p>X (B×D) 乘 W (D×F)，bf16：读 X 2BD 字节、读 W 2DF 字节、写 Y 2BF 字节；FLOPs = 2BDF。</p>
+    <p style="text-align:center"><code>强度 = BDF / (BD + DF + BF)</code></p>
+    <p>当 B 远小于 D 和 F 时，<code>强度 ≈ B</code>。H100 的加速器强度约 295，所以<strong>当且仅当 B &gt; 295 时是 compute-bound</strong>。极端情况 B = 1（矩阵乘向量）：强度为 1，读了整个 D×F 矩阵却只做 2DF 次运算。推理基本上就是这种情况。</p>
+  </div>
+  <h3 id="kvcache">KV cache</h3>
+  <p>朴素推理：每生成一个 token，都把全部历史重新喂进 Transformer。一次前向是 O(T²)，生成 T 个 token 就是 O(T³)。但大量计算在前缀之间是可以共享的：把每个序列（B）、每个 token（S）、每一层（L）、每个 KV 头（K）的 H 维 key 和 value 向量存在 HBM 里，这就是 <strong>KV cache</strong>。</p>
+  <p>推理的两个阶段：</p>
+  <ol>
+    <li><strong>Prefill</strong>：给定 prompt，编码成向量（像训练一样可并行）；</li>
+    <li><strong>生成（decode）</strong>：逐个生成新 token（串行）。</li>
+  </ol>
+  <h3 id="ai-mlp">MLP 层</h3>
+  <div class="derive">
+    <p>SwiGLU MLP：读 X (B×T×D)，读 W_up、W_gate、W_down（共 6DF 字节），算 U、G 并写回，算 Y 并写回。</p>
+    <p>FLOPs = 6BTDF；字节 = 4BTD + 4BTF + 6DF。当 BT 远小于 D、F 时：</p>
+    <p style="text-align:center"><code>强度 ≈ B·T</code></p>
+    <ul>
+      <li>Prefill：让 B·T 足够大（大 batch、长序列）就能 compute-bound。</li>
+      <li>生成：两个问题：一次只生成一个 token（T = 1）；B 是并发请求数，对交互式应用来说不可预测。</li>
+    </ul>
+  </div>
+  <h3 id="ai-attn">注意力层</h3>
+  <div class="derive">
+    <p>用 FlashAttention，只看矩阵乘法。S 为已有 token 数，T 为本次要算的 token 数。读 Q (B×T×D)、K 和 V (B×S×D)，写 Y (B×T×D)：</p>
+    <p>FLOPs = 4BSTD；字节 = 4BSD + 4BTD。</p>
+    <p style="text-align:center"><code>强度 = ST / (S + T)</code></p>
+    <ul>
+      <li>Prefill（T = S）：强度 = S/2，很好。</li>
+      <li>生成（T = 1）：强度 = S/(S+1) &lt; 1，很差。</li>
+    </ul>
+  </div>
+  <div class="key"><span class="label">关键区别</span>注意力的强度<strong>与 B 无关</strong>，所以增大 batch 也救不了它。原因：MLP 层中所有序列共用同一套权重（W 不依赖 B），批处理可以分摊读取权重的成本；注意力层中每个序列都有自己的 KV cache（Q、K、V 都依赖 B），没有东西可以分摊。</div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>MLP 强度</th><th>注意力强度</th></tr></thead>
+      <tbody>
+        <tr><td>Prefill</td><td>B·S</td><td>S/2</td></tr>
+        <tr><td>生成</td><td>B（需要并发请求）</td><td>&lt; 1（无法改善）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="latency">
+  <h2><span class="num">04</span>延迟与吞吐</h2>
+  <p>既然推理是 memory-bound 的，就可以算出理论上的延迟和吞吐。假设计算与访存完美重叠、忽略其他开销：</p>
+  <div class="derive">
+    <p>参数量 = <code>2VD + 3DF·L + (2DNH + 2DKH)·L</code>（嵌入与输出层、MLP、注意力投影）</p>
+    <p>每序列 KV cache = <code>S × K × H × L × 2（K 和 V）× 2（bf16）</code> 字节</p>
+    <p>总显存 = <code>B × 每序列 KV cache + 2 × 参数量</code></p>
+    <p>延迟 = 总显存 ÷ 显存带宽（每步都要把参数和 KV cache 全读一遍）</p>
+    <p>吞吐 = B ÷ 延迟（每步并行生成 B 个 token）</p>
+  </div>
+  <p>以 Llama 2 13B 在 H100 上为例（S = 1024，D = 5120，F = 13824，40 个头，头维度 128，40 层，词表 32000）：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>配置</th><th class="num">参数</th><th class="num">每序列 KV</th><th class="num">总显存</th><th class="num">延迟/步</th><th class="num">吞吐</th></tr></thead>
+      <tbody>
+        <tr><td>MHA，B = 1</td><td class="num">13.0B</td><td class="num">0.84 GB</td><td class="num">26.9 GB</td><td class="num">8.0 ms</td><td class="num">125 tok/s</td></tr>
+        <tr><td>MHA，B = 64</td><td class="num">13.0B</td><td class="num">0.84 GB</td><td class="num">79.7 GB</td><td class="num">23.8 ms</td><td class="num">2,689 tok/s</td></tr>
+        <tr><td>MHA，B = 256</td><td class="num">13.0B</td><td class="num">0.84 GB</td><td class="num">240.8 GB</td><td class="num">71.9 ms</td><td class="num">3,562 tok/s</td></tr>
+        <tr><td>GQA（K = 8），B = 64</td><td class="num">11.3B</td><td class="num">0.17 GB</td><td class="num">33.4 GB</td><td class="num">10.0 ms</td><td class="num">6,417 tok/s</td></tr>
+        <tr><td>GQA（K = 8），B = 256</td><td class="num">11.3B</td><td class="num">0.17 GB</td><td class="num">65.6 GB</td><td class="num">19.6 ms</td><td class="num">13,068 tok/s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>MHA 下 B = 256 需要 241 GB，H100 的 80 GB 放不下，而且吞吐的增长也在递减。</p>
+  <ul>
+    <li><strong>增大 batch 使延迟变差</strong>：KV cache 是 O(B) 的，要读写的更多。</li>
+    <li><strong>增大 batch 使吞吐变好</strong>：读取参数的成本被分摊了。</li>
+  </ul>
+  <p>于是有延迟与吞吐的权衡：小 batch 延迟好、吞吐差；大 batch 吞吐好、延迟差。</p>
+  <p><strong>简单的并行</strong>：启动 M 份模型副本，延迟不变，吞吐变为 M 倍。<strong>困难的并行</strong>：把模型和 KV cache 切分到多张卡上。</p>
+  <p>TTFT 基本由 prefill 时间决定。所以 prefill 用小 batch 以缩短 TTFT，生成阶段用大 batch 以提高吞吐。</p>
+</section>
+
+<section id="kv-reduce">
+  <h2><span class="num">05</span>有损捷径一：缩小 KV cache</h2>
+  <p>显存是推理的瓶颈，那就缩小 KV cache，同时确保不损失太多精度。</p>
+  <h3 id="gqa">分组查询注意力（GQA）</h3>
+  <p>N 个 query 头，但只有 K 个 key/value 头，每个 KV 头服务 N/K 个 query 头。MHA：K = N；MQA：K = 1；GQA：K 介于两者之间。GQA 把 KV cache 缩小 N/K 倍。由于推理是 memory-bound 的，显存用量减少就直接带来加速（见上表：K 从 40 降到 8，同样 B = 64 下吞吐提高约 2.4 倍，而且放得下更大的 batch）。Ainslie et al. (2023) 验证了精度基本不降。</p>
+  <h3 id="mla">多头潜在注意力（MLA）</h3>
+  <p>普通注意力的 KV cache 存的是 <code>K = W_K h</code>、<code>V = W_V h</code>（N·H 维）。MLA 只存压缩向量 <code>c = W_c h</code>（C 维），需要时再投影回 <code>K = W_K c</code>、<code>V = W_V c</code>。DeepSeek V2 把 N·H = 16384 压缩到 C = 512。麻烦在于 MLA 与 RoPE 不兼容，需要额外 64 维来承载 RoPE，共 576 维。精度方面：MHA 比 GQA 好（但更贵）；MLA 比 MHA 还略好（而且便宜得多）。</p>
+  <h3 id="cla">跨层注意力（CLA）</h3>
+  <p>GQA 在<strong>头</strong>之间共享 KV，CLA 在<strong>层</strong>之间共享 KV。实证上改善了精度与 KV cache 大小（即延迟与吞吐）之间的帕累托前沿。</p>
+  <h3 id="local">局部（滑动窗口）注意力</h3>
+  <p>只看局部上下文，因为局部信息对建模最重要。有效上下文随层数线性增长（每层往回看 w 个 token，L 层就能看到 L·w 远）。KV cache 的大小与序列长度无关。问题是仍可能伤害精度；解决办法是局部层与全局层交替（混合层）。</p>
+  <h3 id="dsv4">DeepSeek V4 的注意力</h3>
+  <p>支持 100 万 token 的上下文，组合了三种机制：压缩稀疏注意力（CSA，每 m 个 token 压缩成 1 个）、DeepSeek 稀疏注意力（DSA，选出 top-k）、重度压缩注意力（HCA，压缩得更狠）。</p>
+  <p>小结：目标是缩小 KV cache 而不伤精度。方法有低维 KV cache（GQA、MLA、CLA）、在部分层上用局部注意力截断 KV cache，以及线性注意力/状态空间模型（Mamba 2、Gated DeltaNet）、扩散模型等其他思路。</p>
+</section>
+
+<section id="quant">
+  <h2><span class="num">06</span>有损捷径二：量化</h2>
+  <p>降低数值精度：内存更少，延迟和吞吐就更好（因为 memory-bound），当然要关心精度。</p>
+  <div class="derive">
+    <p><strong>机制</strong>：<code>x_quant = round(x / scale) + zero_point</code>，<code>x ≈ (x_quant − zero_point) × scale</code>。</p>
+    <p>例：x = 5.2342，scale = 0.1，zero_point = 4 → x_quant = 52 + 4 = 56 → 反量化得 5.2，误差 0.0342。</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>格式</th><th class="num">字节</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>fp32</td><td class="num">4</td><td>训练时的参数和优化器状态</td></tr>
+        <tr><td>bf16</td><td class="num">2</td><td>推理的默认格式</td></tr>
+        <tr><td>fp8（H100 上的 E4M3，约 ±240）</td><td class="num">1</td><td>敢的话也能用来训练</td></tr>
+        <tr><td>int8 [−128, 127]</td><td class="num">1</td><td>比 fp8 精度差但更便宜，只用于推理</td></tr>
+        <tr><td>int4 [−8, 7]</td><td class="num">0.5</td><td>更便宜，精度更差</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li><strong>量化感知训练（QAT）</strong>：训练时在前向里做“量化再反量化”，模拟量化误差。优点是权重学会适应量化；缺点是需要昂贵的大规模训练。</li>
+    <li><strong>训练后量化（PTQ）</strong>：训练后做，便宜得多。在样本数据上跑一遍，为每层或每个张量确定 scale 和 zero point。<strong>GPTQ</strong> 利用 Hessian 信息，调整尚未量化的权重来补偿已量化权重的误差。</li>
+    <li><strong>激活感知量化（AWQ）</strong>：观察到某些激活通道特别大，与它们相乘的权重更重要，所以根据激活值挑出 0.1–1% 的权重保留高精度。fp16 → int3，显存降为 1/4，速度提升 3.2 倍。</li>
+  </ul>
+</section>
+
+<section id="prune">
+  <h2><span class="num">07</span>有损捷径三：剪枝与蒸馏</h2>
+  <p>把昂贵模型的一部分直接拆掉，让它变便宜，然后再修好它。NVIDIA 的做法（Minitron）：</p>
+  <ol>
+    <li>在一个小的校准数据集（1024 个样本）上识别重要的层、头、隐藏维度；</li>
+    <li>去掉不重要的部分，得到更小的模型；</li>
+    <li>把原模型蒸馏到剪枝后的模型里。</li>
+  </ol>
+  <p>结果：用很少的训练 token，就能得到与从头训练的同尺寸模型相当甚至更好的小模型。</p>
+  <p>两种得到快模型的配方：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>从头训练</th><th>蒸馏</th></tr></thead>
+      <tbody>
+        <tr><td>1. 定义更快的模型架构<br>2. 训练这个更快的模型</td><td>1. 定义更快的模型架构<br>2. 用原模型（架构不同）的权重初始化<br>3. 通过蒸馏修复这个更快的模型</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="spec">
+  <h2><span class="num">08</span>无损捷径：投机采样</h2>
+  <p>回忆两个阶段：prefill 并行编码整个序列（compute-bound，而且顺便给出每个位置的概率）；生成一次一个 token（memory-bound）。也就是说，<strong>检查比生成快</strong>。</p>
+  <ul>
+    <li>用一个便宜的<strong>草稿模型</strong> p 猜几个 token（比如 4 个）；</li>
+    <li>用目标模型 q 并行评估这些 token，看起来不错就接受。</li>
+  </ul>
+  <p>这是以 p 为提议分布、q 为目标分布的改进版拒绝采样。改动之处是：总会至少产出一个 token（标准拒绝采样会一直循环）。关键性质：<strong>保证是来自目标模型的精确样本</strong>。</p>
+  <div class="derive">
+    <p><strong>算法（每个位置）</strong>：从 p 采样 x。以概率 <code>min(1, q(x)/p(x))</code> 接受；若拒绝，就从残差分布 <code>norm(max(q − p, 0))</code> 重新采样，并丢弃后面所有草稿 token。</p>
+    <p><strong>用例子证明</strong>：词表只有 {A, B}。设 p(A) &gt; q(A)（草稿模型过度采样 A），于是 p(B) &lt; q(B)。残差 max(q − p, 0) = [0, q(B) − p(B)]，归一化后为 [0, 1]。</p>
+    <p style="text-align:center"><code>P[得到 A] = p(A) · q(A)/p(A) + p(B) · 1 · 0 = q(A)</code></p>
+    <p style="text-align:center"><code>P[得到 B] = p(B) · 1 + p(A) · (1 − q(A)/p(A)) · 1 = p(B) + p(A) − q(A) = q(B)</code></p>
+    <p>（第二行用了 p(A) + p(B) = 1 = q(A) + q(B)。）两个概率都恰好等于目标分布。</p>
+  </div>
+  <p>实践中常见的组合：目标 70B + 草稿 8B，或目标 8B + 草稿 1B。草稿模型越接近目标模型越好（可以用蒸馏）。改进草稿模型的扩展：</p>
+  <ul>
+    <li><strong>Medusa</strong>：草稿头并行生成多个 token；</li>
+    <li><strong>EAGLE</strong>：草稿模型利用目标模型的高层特征。</li>
+  </ul>
+  <p>小结：数学保证了从目标模型精确采样；它利用了检查与生成之间的不对称；草稿模型还有大量创新空间（需要训练）。</p>
+</section>
+
+<section id="dynamic">
+  <h2><span class="num">09</span>应对动态负载</h2>
+  <p>在线服务中对序列做批处理很棘手：① 请求到达时间不同（等凑满一批对先到的请求不公平）；② 序列有共享前缀（系统提示、对同一问题采样多次）；③ 序列长度不同（填充很浪费）。</p>
+  <h3 id="cb">连续批处理（Orca）</h3>
+  <p><strong>问题一</strong>：训练时拿到的是一个致密的 token 块（batch × 序列长度）；推理时请求在不同时间到达和结束，是一个参差不齐的数组。</p>
+  <p><strong>解法：迭代级调度</strong>。一步一步解码，新请求到达时直接加入当前 batch，不必等整批生成完。</p>
+  <p><strong>问题二</strong>：批处理似乎要求所有序列形状一致，但每个请求长度不同。</p>
+  <p><strong>解法：选择性批处理</strong>。注意力部分每个序列单独处理（形状如 [3, H]、[9, H]、[5, H]）；非注意力部分（MLP、投影）把所有序列拼接成 [3 + 9 + 5, H] 一起算。这正好对应第 3 节的结论：MLP 能从批处理中获益，注意力不能。</p>
+  <h3 id="paged">PagedAttention（vLLM）</h3>
+  <p>以前的做法：请求到来时，为 prompt 和回复预先分配一段连续的 KV cache（按最大长度）。问题是<strong>碎片化</strong>，就像硬盘一样：</p>
+  <ul>
+    <li>实际生成的 token 可能远少于最大长度（内部碎片）；</li>
+    <li>各段之间还可能有用不上的空隙（外部碎片）。</li>
+  </ul>
+  <p><strong>解法（借鉴操作系统的分页）</strong>：把一个序列的 KV cache 切成不连续的<strong>块</strong>，用块表把逻辑块映射到物理块。</p>
+  <ul>
+    <li>多个序列可以共享 KV cache：共享系统提示；对同一个 prompt 采样多个回复（例如程序合成）。</li>
+    <li>在块级别共享前缀，并用<strong>写时复制</strong>处理分叉。</li>
+  </ul>
+  <p>vLLM 的其他优化：融合块读取和注意力的 kernel（减少 kernel 启动开销）；使用最新的 kernel（FlashAttention、FlashDecoding）；用 CUDA graphs 避免 kernel 启动开销。</p>
+  <p>小结：用操作系统的思想（分页）来管理动态负载下的显存。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">10</span>本课要点</h2>
+  <ul>
+    <li>推理很重要：实际使用、评测、强化学习都离不开它。</li>
+    <li>它与训练的特性不同：生成阶段是 memory-bound 的，负载是动态的。</li>
+    <li>MLP 的生成强度约为 B，可以靠批处理提升；注意力的生成强度 &lt; 1，只能靠缩小 KV cache。</li>
+    <li>技术：新架构（GQA、MLA、局部注意力）、量化、剪枝与蒸馏、投机采样。</li>
+    <li>来自系统领域的思想：投机执行、分页。</li>
+    <li>新架构在推理效率上还有巨大的改进空间。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">11</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>7B 模型、bf16、H100（3.35 TB/s），batch = 1、忽略 KV cache，理论上每秒最多生成多少 token？</summary><div>
+    <p>每步读 14 GB 权重，14 / 3350 ≈ 4.2 ms，约 240 token/s。这是上限，实际还会受 KV cache、kernel 开销影响。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>为什么增大 batch 能提高 MLP 的算术强度，却不能提高注意力的？</summary><div>
+    <p>MLP 的权重被 batch 中所有序列共享，读一次可以服务 B 个 token，强度约为 B。注意力要读的是每个序列自己的 KV cache，数据量随 B 线性增长，计算量也随 B 线性增长，比值与 B 无关。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>投机采样中，如果草稿模型和目标模型完全一样，会怎样？如果完全不相关呢？</summary><div>
+    <p>完全一样：接受概率 min(1, q/p) = 1，每轮 k 个草稿全部接受，外加目标模型顺带给出的 1 个 token。完全不相关：几乎每次第一个草稿就被拒绝，每轮只从残差分布得到 1 个 token，还白白付出了草稿模型的成本。两种情况下，输出分布都严格等于目标模型。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>用 scale = 0.05、zero_point = 0 把 x = 5.2342 量化成 int8，再反量化，结果是多少？</summary><div>
+    <p>round(5.2342 / 0.05) = round(104.68) = 105，在 [−128, 127] 内。反量化 105 × 0.05 = 5.25，误差 0.016，比讲义例子更小，但能表示的范围只有约 ±6.4。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>PagedAttention 解决了什么问题？它和操作系统的虚拟内存有什么对应关系？</summary><div>
+    <p>解决按最大长度预分配连续显存带来的内部和外部碎片，并支持前缀共享。对应关系：KV 块 ↔ 内存页；每个序列的块表 ↔ 页表；共享前缀 + 写时复制 ↔ fork 后的共享页。显存利用率提高，能同时服务的序列更多，batch 更大，吞吐更高。</p>
+  </div></details>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_10.py 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_09.html">← 第9课 Scaling laws（一）</a> · <a href="lecture_11.html">第11课 Scaling laws（二） →</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+
