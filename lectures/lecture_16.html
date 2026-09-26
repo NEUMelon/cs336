@@ -324,14 +324,14 @@ footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-t
 
 <nav class="topbar" aria-label="课程导航">
   <a class="home" href="../index.html">CS336 · 全部笔记</a>
-  <div class="pn"><a href="lecture_15.html">← 第15课 SFT 与 RLHF</a></div>
+  <div class="pn"><a href="lecture_15.html">← 第15课 SFT 与 RLHF</a><a href="lecture_17.html">第17课 多模态 →</a></div>
 </nav>
 
 <header class="masthead">
   <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 16</div>
   <h1>后训练（二）：可验证奖励的强化学习（RLVR）</h1>
   <p class="lede">预训练加 RLHF 大约能到 GPT-3.5 的水平；今天要一路走到 o1 和 R1。RLHF 因为过度优化无法干净地扩展；如果在奖励可以精确验证的领域（数学、代码）做 RL，就能真正“优化我们想要的东西”。这一课先讲算法：PPO 的实际实现、GRPO 及其偏差与修正；再做三个案例研究：DeepSeek R1、Kimi K1.5、Qwen 3。</p>
-  <div class="meta"><span><b>对应讲义</b> lecture_16.pdf</span><span><b>对应作业</b> Assignment 5（GRPO）</span><span><b>下一课</b> 智能体</span></div>
+  <div class="meta"><span><b>对应讲义</b> lecture_16.pdf</span><span><b>对应作业</b> Assignment 5（GRPO）</span><span><b>下一课</b> 多模态</span></div>
 </header>
 
 <div class="layout">
@@ -576,7 +576,7 @@ advantages = (rewards - rewards.mean(dim=1, keepdim=True)) / (rewards.std(dim=1,
   </main>
 </div>
 
-<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_16.pdf 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_15.html">← 第15课 SFT 与 RLHF</a></footer>
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_16.pdf 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_15.html">← 第15课 SFT 与 RLHF</a> · <a href="lecture_17.html">第17课 多模态 →</a></footer>
 
 <script>
 (function () {

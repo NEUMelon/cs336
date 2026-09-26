@@ -561,7 +561,7 @@ micro_batches = data.chunk(num_micro_batches) <span class="k">if</span> rank == 
       <text x="274" y="128" text-anchor="middle">m1</text><text x="338" y="128" text-anchor="middle">m2</text><text x="402" y="128" text-anchor="middle">m3</text><text x="466" y="128" text-anchor="middle">m4</text></g>
       <text x="274" y="16" text-anchor="middle">时间 →（7 个时间片，每张卡只忙 4 个）</text>
     </svg>
-    <figcaption>p = 4 级流水线、m = 4 个 micro-batch 的前向传播。深灰色空白处是气泡。</figcaption>
+    <figcaption>p = 4 级流水线、m = 4 个 micro-batch 的前向传播。没有色块的格子就是气泡（GPU 在空等）。</figcaption>
   </figure>
   <div class="derive">
     <p><strong>气泡比例</strong>：总时间片 = m + p − 1，每张卡工作 m 个，空闲比例 = <code>(p − 1) / (m + p − 1)</code>。上图 p = 4、m = 4：3/7 ≈ 43% 的时间在空转。m = 32 时降到 3/35 ≈ 9%。</p>

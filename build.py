@@ -189,6 +189,82 @@ def index_page(metas, css):
 """
 
 
+APP_JS = """<script>
+(function () {
+  var view = document.getElementById("view");
+  var home = document.getElementById("home");
+  var cache = {};
+
+  function showHome() {
+    view.hidden = true; view.innerHTML = ""; home.hidden = false;
+    document.title = "CS336 课程笔记";
+  }
+
+  function rewrite(root) {
+    root.querySelectorAll("a[href]").forEach(function (a) {
+      var h = a.getAttribute("href");
+      var m = h.match(/^lecture_(\\d\\d)\\.html$/);
+      if (m) a.setAttribute("href", "#l" + m[1]);
+      else if (h === "../index.html") a.setAttribute("href", "#");
+    });
+  }
+
+  function mount(html) {
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    view.innerHTML = "";
+    [".topbar", ".masthead", ".layout", "footer.end"].forEach(function (sel) {
+      var el = doc.querySelector(sel);
+      if (el) view.appendChild(document.importNode(el, true));
+    });
+    rewrite(view);
+    home.hidden = true; view.hidden = false;
+    document.title = doc.title;
+    window.scrollTo(0, 0);
+    doc.querySelectorAll("script").forEach(function (old) {
+      var s = document.createElement("script");
+      s.textContent = old.textContent;
+      view.appendChild(s);
+    });
+  }
+
+  function route() {
+    var m = location.hash.match(/^#l(\\d\\d)$/);
+    if (!m) { showHome(); return; }
+    var url = "lectures/lecture_" + m[1] + ".html";
+    if (cache[url]) { mount(cache[url]); return; }
+    fetch(url).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (t) { cache[url] = t; mount(t); }).catch(function () {
+      view.hidden = false; home.hidden = true;
+      view.innerHTML = '<p class="muted" style="max-width:760px;margin:40px auto">这一讲没能加载出来。请刷新页面再试一次，或 <a href="#">返回目录</a>。</p>';
+    });
+  }
+
+  // In-page anchors (table of contents) scroll instead of changing the route.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var h = a.getAttribute("href");
+    if (h === "#" || /^#l\\d\\d$/.test(h)) return;
+    var t = document.getElementById(h.slice(1));
+    if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  });
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>"""
+
+
+def app_page(metas, css, index_html):
+    """Single-page shell for the published artifact: the course index plus a
+    view that fetches each lecture page (published alongside) and swaps it in."""
+    body = index_html.split("</style>", 1)[1]
+    body = re.sub(r'href="lectures/lecture_(\d\d)\.html"', r'href="#l\1"', body)
+    head = index_html.split("</style>", 1)[0] + "</style>"
+    return f'{head}\n<div id="home">\n{body}\n</div>\n<div id="view" hidden></div>\n{APP_JS}\n'
+
+
 def main():
     css = (SRC / "style.css").read_text().strip()
     files = sorted(SRC.glob("lecture_*.html"))
@@ -201,8 +277,13 @@ def main():
         out = OUT / f"lecture_{meta['num']:02d}.html"
         out.write_text(page(meta, body, script, css, prev_meta, next_meta, ""))
         print("wrote", out.relative_to(ROOT))
-    (ROOT / "index.html").write_text(index_page(metas, css))
+    index_html = index_page(metas, css)
+    (ROOT / "index.html").write_text(index_html)
     print("wrote index.html")
+    site = ROOT / "site"
+    site.mkdir(exist_ok=True)
+    (site / "app.html").write_text(app_page(metas, css, index_html))
+    print("wrote site/app.html (artifact shell)")
 
 
 if __name__ == "__main__":

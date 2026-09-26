@@ -1,0 +1,593 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第17课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_16.html">← 第16课 RLVR 与推理模型</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 17</div>
+  <h1>多模态模型：让 Transformer 看图、看视频、生成图像</h1>
+  <p class="lede">到目前为止都是“文本进、文本出”的语言模型，但世界是多模态的。终极目标是全模态（omni）模型：任意组合的模态输入（理解），任意组合的模态输出（生成）。Transformer 效果极好，而它只“说” token，所以一切都要变成 token。这一课沿着这条线索：图像编码器（CLIP、SigLIP）→ 把图像编码接进 LLM（LLaVA、Qwen-VL 系列）→ 统一离散 token 的 Chameleon。</p>
+  <div class="meta"><span><b>对应源码</b> lecture_17.py</span><span><b>对应作业</b> —</span><span><b>下一课</b> 课程结束</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#fp">1. 从第一性原理出发</a></li>
+<li><a href="#clip">2. CLIP：用图文对学习图像表示</a><ol>
+<li><a href="#clip-method">方法：对比学习</a></li>
+<li><a href="#clip-data">数据与处理</a></li>
+<li><a href="#clip-arch">编码器</a></li>
+<li><a href="#clip-result">结果</a></li>
+</ol></li>
+<li><a href="#siglip">3. SigLIP：换成 sigmoid 损失</a></li>
+<li><a href="#llava">4. LLaVA：把图像编码接进 LLM</a><ol>
+<li><a href="#llava-data">数据：用 GPT-4 合成</a></li>
+<li><a href="#llava-model">模型与训练</a></li>
+</ol></li>
+<li><a href="#onevision">5. LLaVA-OneVision：多图、视频与高分辨率</a><ol>
+<li><a href="#anyres">AnyRes：保留高分辨率</a></li>
+<li><a href="#modal-balance">平衡三种输入</a></li>
+<li><a href="#transfer">模态之间的迁移</a></li>
+</ol></li>
+<li><a href="#qwenvl">6. Qwen-VL 系列</a><ol>
+<li><a href="#qwenvl1">Qwen-VL</a></li>
+<li><a href="#qwen2vl">Qwen2-VL</a></li>
+<li><a href="#qwen3vl">Qwen3-VL</a></li>
+</ol></li>
+<li><a href="#chameleon">7. Chameleon：一切都是离散 token</a><ol>
+<li><a href="#vqvae">VQ-VAE 图像分词器</a></li>
+<li><a href="#cham-train">训练</a></li>
+<li><a href="#cham-stab">训练稳定性</a></li>
+</ol></li>
+<li><a href="#summary">8. 本课要点</a></li>
+<li><a href="#quiz">9. 自测题</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>Transformer 处理的是 token 序列</strong>（离散的或连续的），每个 token 代表大约一个语义单位的信息。所以任何模态都必须先被切成 token。文本也是如此（回忆第一课的分词），只是非文本模态更难。</p>
+    <p>分词的两个老问题在这里重新出现：</p>
+    <ul>
+      <li><strong>序列长度</strong>：一张 336×336 的图切成 14×14 的小块就有 576 个 token，一段视频更多。注意力是平方复杂度，token 太多就太贵；太少就丢信息（例如文字识别需要高分辨率）。</li>
+      <li><strong>token 表示什么</strong>：<strong>理解</strong>需要语义（这是一只猫）；<strong>生成</strong>需要能还原像素的细节。连续的语义特征（CLIP）适合理解，离散的可重建编码（VQ-VAE）适合生成，两者不一定兼得。</li>
+    </ul>
+    <p>于是两个问题：① 怎样输入非文本数据（理解图像）？② 怎样输出非文本数据（生成音频、图像）？</p>
+  </div>
+</section>
+
+<section id="clip">
+  <h2><span class="num">02</span>CLIP：用图文对学习图像表示</h2>
+  <p>背景：计算机视觉模型过去在人工标注的图像上训练（如 ImageNet 的 120 万张图、1000 个类别）。问题：能否利用数量大得多的（图像，说明文字）对？</p>
+  <h3 id="clip-method">方法：对比学习</h3>
+  <ol>
+    <li>取一个 batch 的（图像，文本）对（例如 32768 对）；</li>
+    <li>分别编码每张图像和每段文本；</li>
+    <li>对每张图像，让它更偏好与之配对的文本，而不是其他文本；</li>
+    <li>对每段文本，让它更偏好与之配对的图像，而不是其他图像。</li>
+  </ol>
+  <div class="derive">
+    <p>设图像嵌入 I_i、文本嵌入 T_j 都已 L2 归一化，温度 τ（可学习）。相似度矩阵 <code>S_ij = I_i · T_j / τ</code> 是 N×N 的，对角线是正确配对。</p>
+    <p style="text-align:center"><code>L = ½ [ CE(S, 对角线, 按行) + CE(Sᵀ, 对角线, 按行) ]</code></p>
+    <p>即对每一行（每张图）在 N 段文本上做 softmax 分类，对每一列（每段文本）在 N 张图上做 softmax 分类。batch 中其他样本都充当负例，所以<strong>需要很大的 batch</strong>，而且 softmax 要在整个 batch 上归一化。</p>
+  </div>
+  <h3 id="clip-data">数据与处理</h3>
+  <p>搜索了 50 万个查询，每个查询约得到 2 万个图文对，共训练了 4 亿个图文对。数据集没有公开。OpenCLIP 复现了它（用 LAION-5B 数据集，而 LAION-5B 本身是用 CLIP 过滤的）。</p>
+  <p>图像处理：图像分辨率各不相同（任意 W×H），先用双三次插值缩放使短边为 336 像素，再中心裁剪（切掉边缘）得到 336×336。</p>
+  <h3 id="clip-arch">编码器</h3>
+  <ul>
+    <li><strong>视觉编码器</strong>：试过 ResNet-50 和 Vision Transformer（ViT）。ViT 把图像切成固定大小的块，每块展平后线性投影成一个 token。用注意力池化：以激活的全局平均作为 query 做一次 QKV。最好的模型是 <strong>ViT-L/14@336px</strong>（Large 规模，14×14 的块，3 个颜色通道，在 336×336 图像上训练）。</li>
+    <li><strong>文本编码器</strong>：GPT-2 式 Transformer（6300 万参数，12 层），编码 [BOS] … [EOS]，取最高层 [EOS] 位置的激活。</li>
+  </ul>
+  <div class="note"><span class="label">补充：一张图是多少个 token</span>
+    <p>336 / 14 = 24，所以一张图是 24 × 24 = <strong>576</strong> 个块，也就是 576 个 token。分辨率翻倍，token 数变为 4 倍。</p>
+  </div>
+  <h3 id="clip-result">结果</h3>
+  <p>在 ImageNet 上，<strong>零样本</strong> CLIP（把类别名写成“a photo of a {类别}”，选相似度最高的）胜过在 120 万张 ImageNet 图上训练的 ResNet-50。</p>
+  <p>消融：另一种做法是直接从图像预测文本（生成式），但计算效率比 CLIP 式的排序低得多。预测具体的字词太难了，只需要判断“哪段文本配哪张图”就简单得多。</p>
+  <p>小结：图像编码捕获了（带噪声的）文本所给出的语义；设计决策是根据图像分类选的（不太精细）；技术上需要很大的 batch，并在整个 batch 上做 softmax。</p>
+</section>
+
+<section id="siglip">
+  <h2><span class="num">03</span>SigLIP：换成 sigmoid 损失</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>目标</th></tr></thead>
+      <tbody>
+        <tr><td>CLIP</td><td>多分类：对（文本，图像）与所有（文本，其他图像）比较，softmax</td></tr>
+        <tr><td>SigLIP</td><td>二分类：这一对（文本，图像）是否匹配？对每一对独立做 sigmoid</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="derive">
+    <p><code>L = −(1/N) Σ_i Σ_j log σ( z_ij · (t · I_i·T_j + b) )</code>，其中 z_ij = +1（i = j，匹配）或 −1（不匹配），t 是可学习的温度，b 是可学习的偏置（初始化为较大的负数，因为绝大多数对都不匹配）。</p>
+    <p>每一对的损失互相独立，不需要对整个 batch 做归一化。所以可以把 batch 切到多个设备上，各自计算本地的块，再轮换文本嵌入，不需要一次汇总全部相似度矩阵。</p>
+  </div>
+  <p>数据：WebLI 数据集，数十亿量级的图文对，从互联网抓取，用自动 OCR 提取图像中的文字，只保留质量最高的 10%，支持 100 种语言。</p>
+  <p>效率：CLIP 在 256 块 TPUv3 上训练 10 天；SigLIP 在 32 块 TPUv4 上训练 5 天（TPUv4 的 FLOP/s 还比 TPUv3 低），快得多。</p>
+  <p>批大小：把 batch 大小和损失解耦。batch 小于 16K 时比 CLIP 好；可以扩展到 100 万的 batch，但 32K 就够了。</p>
+</section>
+
+<section id="llava">
+  <h2><span class="num">04</span>LLaVA：把图像编码接进 LLM</h2>
+  <p>LLaVA（Large Language and Vision Assistant）：视觉编码器用 CLIP，文本解码器用 Vicuna（在 ShareGPT 对话上微调的 LLaMA）。</p>
+  <h3 id="llava-data">数据：用 GPT-4 合成</h3>
+  <p>MS COCO 的图像带有边界框和 Mechanical Turk 写的说明。把说明文字或检测到的物体（纯文本！）交给 GPT-4，让它生成问题或对话，再把生成内容和原图配对。共 15.8 万个样本。GPT-4 并没有看到图像，只看到了关于图像的文字描述。</p>
+  <h3 id="llava-model">模型与训练</h3>
+  <p>用 CLIP（ViT-L/14）编码图像，然后用一个<strong>线性投影</strong> W 映射到 LLM 的嵌入空间（Flamingo、Q-Former 等方案更复杂）。图像 token 和文本 token 拼在一起送进 LLM。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>阶段</th><th>冻结</th><th>训练</th><th>目的</th></tr></thead>
+      <tbody>
+        <tr><td>1. 对齐</td><td>视觉编码器、语言模型</td><td>只训练 W</td><td>让图像特征落进 LLM 能“读懂”的嵌入空间</td></tr>
+        <tr><td>2. 微调</td><td>视觉编码器</td><td>W 和语言模型</td><td>学会基于图像进行对话</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="onevision">
+  <h2><span class="num">05</span>LLaVA-OneVision：多图、视频与高分辨率</h2>
+  <p>LLaVA 系列的最新版本（在 LLaVA 1.5、LLaVA-NeXT 之后），能处理多张图像和视频。视觉编码器：SigLIP（使用最后一层 Transformer 前后的网格特征）；文本解码器：Qwen-2 72B；投影器：2 层 MLP。</p>
+  <h3 id="anyres">AnyRes：保留高分辨率</h3>
+  <p>保留高分辨率很重要（例如 OCR）。CLIP 把图缩放并裁剪到 336×336，会丢失信息。解决办法 AnyRes（LLaVA 1.5 引入）：把图像切成 a × b 块（每块与视觉编码器的分辨率匹配），分别编码后拼接；如果 token 太多（原图分辨率太高），就用双线性插值缩减。</p>
+  <h3 id="modal-balance">平衡三种输入</h3>
+  <p>目标：让所有输入类型产生大致相同长度的 token 序列。</p>
+  <ul>
+    <li>单张图像：用更高的分辨率；</li>
+    <li>多张图像：每张用基础分辨率；</li>
+    <li>视频：每帧用更低的分辨率。</li>
+  </ul>
+  <p>数据理念：质量重于数量。训练理念：从易到难。</p>
+  <h3 id="transfer">模态之间的迁移</h3>
+  <ul>
+    <li>单图数据中的图表、示意图能力，泛化到多图场景；</li>
+    <li>单图上的 OCR 加上多图上的关系推理，泛化到基于 GUI 的智能体；</li>
+    <li>单图上的视觉提示（画圈标注），泛化到视频。</li>
+  </ul>
+  <p>小结：标准的视觉语言模型模板是“视觉编码器 + 投影器 + LM”；大部分工作花在数据整理上（大量合成的、针对具体任务的数据）；完全开源（发布了权重和数据）。</p>
+</section>
+
+<section id="qwenvl">
+  <h2><span class="num">06</span>Qwen-VL 系列</h2>
+  <h3 id="qwenvl1">Qwen-VL</h3>
+  <ul>
+    <li>视觉编码器：OpenCLIP 的 ViT-bigG（14×14 块）。</li>
+    <li>适配器：一层交叉注意力，融入二维位置编码，把图像特征压缩到固定长度 256。</li>
+    <li>特殊 token：&lt;img&gt;、&lt;box&gt;、&lt;ref&gt;（用于定位和指代）。</li>
+  </ul>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>阶段</th><th>数据</th><th>训练哪些参数</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>大规模、低质量的图文对</td><td>冻结 LM，训练视觉编码器 + 适配器</td></tr>
+        <tr><td>2</td><td>更高质量的任务数据，提高分辨率</td><td>训练全部参数</td></tr>
+        <tr><td>3</td><td>指令微调数据</td><td>冻结视觉编码器，训练适配器 + LM</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="qwen2vl">Qwen2-VL</h3>
+  <p>更大的 ViT（6.75 亿参数）。关键是<strong>动态分辨率</strong>：不再把图缩放到固定尺寸，而是按原始分辨率切块。</p>
+  <div class="derive">
+    <p>一块 224×224 的区域，用 14×14 的块切成 16×16 = 256 个块；再把相邻 2×2 个块合并成一个 token，得到 8×8 = 64 个 token，加上视觉开始和结束的两个特殊 token，共 <strong>66</strong> 个 token。</p>
+    <p>视频：每秒采样 2 帧，最多 16384 个 token。</p>
+  </div>
+  <p><strong>多模态旋转位置编码（MRoPE）</strong>：把 RoPE 的维度分成三份，分别编码时间、高度、宽度三个位置分量。文本 token 的三个分量相同，退化为普通 RoPE；图像 token 的时间分量固定、高宽分量取块的坐标；视频 token 的时间分量随帧递增。这样模型直接“知道”每个视觉 token 在时空中的位置。</p>
+  <p>语言模型用 Qwen2 初始化，视觉编码器用 DFN 初始化。训练与 Qwen-VL 类似的三阶段。能力覆盖很广：文档理解、多语言 OCR、视频理解、智能体操作等。</p>
+  <h3 id="qwen3vl">Qwen3-VL</h3>
+  <ul>
+    <li><strong>语言模型</strong>：Qwen3（稠密和 MoE，最大 235B-A22B），支持 256K 长上下文。</li>
+    <li><strong>视觉编码器</strong>：SigLIP-2（架构与 SigLIP 相同）。</li>
+    <li><strong>交错式 MRoPE</strong>：把时间、宽、高三个轴交错分配到低频和高频维度上，即 <code>[t w h t w h …]</code>，而不是 <code>[t t t … w w w … h h h …]</code>。原来的分法让时间轴只占高频（或低频）部分，交错后每个轴都能覆盖全部频率范围。</li>
+    <li><strong>显式视频时间戳</strong>：用单独的文本 token 表示时间，而不是塞进位置编码。</li>
+    <li><strong>平方根归一化的逐 token 损失</strong>：平衡文本和多模态数据（视频样本很长，不希望它们主导损失）。</li>
+    <li><strong>适配器 DeepStack</strong>：跨层融合，把视觉信息注入 LLM 的多个层，而不只是输入层。</li>
+    <li><strong>训练</strong>：预训练 4 个阶段（先训练适配器，再在 8K、32K、256K 长度上训练全部参数）；后训练：长思维链 SFT、知识蒸馏、RL。</li>
+  </ul>
+  <p>小结：性能达到最强水平；大量数据工作但细节不多；架构上有一些小但可能重要的改进；规模放大。</p>
+</section>
+
+<section id="chameleon">
+  <h2><span class="num">07</span>Chameleon：一切都是离散 token</h2>
+  <p>到目前为止，视觉语言模型都是用 CLIP 或 SigLIP 编码图像再注入 LM。缺点：<strong>不能生成图像</strong>（需要另接扩散模型）。</p>
+  <p>Chameleon 把一切都映射成离散 token。好处：可以用统一的方式理解和生成图像，图像和文本可以任意交错（早期融合）。</p>
+  <h3 id="vqvae">VQ-VAE 图像分词器</h3>
+  <p>关键区别：编码器必须输出<strong>离散</strong> token，这样才能像文本一样生成。</p>
+  <div class="derive">
+    <p><strong>VQ-VAE</strong>：编码器把图像映射成一个特征网格；每个位置的特征向量被替换成码本（codebook）中最近的那个向量，记下它的编号，这个编号就是 token；解码器从码本向量还原图像；训练目标是最小化重建误差（外加让编码器输出贴近码本的承诺损失）。</p>
+    <p>Chameleon：把 512×512 的图像编码成 1024 个 token（32×32 网格），码本大小 8192。</p>
+    <p>补充估算：每个 token 携带 log₂ 8192 = 13 比特，1024 个 token 共约 1.7 万比特；原图 512×512×3 个 8 位像素约 630 万比特。压缩了约 400 倍，所以细节（例如小字）必然丢失。</p>
+  </div>
+  <p>此外，他们还在文本和图像 token 上训练了一个新的 BPE 分词器。</p>
+  <h3 id="cham-train">训练</h3>
+  <ul>
+    <li>阶段 1（80%）：大规模无监督数据：2.9T 纯文本 token、1.5T 图文 token、400B 图文交错 token。</li>
+    <li>阶段 2（20%）：一半是阶段 1 的数据，一半是高质量数据。</li>
+  </ul>
+  <h3 id="cham-stab">训练稳定性</h3>
+  <p>文本 token 熵低（下一个词往往很确定），图像 token 熵高（纹理细节难以预测）。两种模态在同一个模型里竞争，导致范数增长和 logit 漂移。修复办法正是第三课讲过的稳定性技巧：<strong>QK-norm</strong> 和 <strong>z-loss</strong>。</p>
+  <p>小结：优雅（只是对离散 token 做自回归建模）；性能不如连续编码（离散化丢失信息，比如 OCR）；多模态联合训练很棘手。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">08</span>本课要点</h2>
+  <ul>
+    <li>前沿模型被期望是多模态的（原生多模态、全模态）。</li>
+    <li>根本挑战：怎样编码非文本模态，即怎样把它们变成 token。</li>
+    <li>理解和生成的需求可能不同：理解要语义，生成要更细的细节。</li>
+    <li>要平衡图像、视频（信息密度较低、序列很长）与文本，以保证训练稳定。</li>
+    <li>当前主流：连续编码器 + Transformer 用于理解，扩散模型用于生成；统一离散 token（Chameleon）优雅但有信息损失。</li>
+    <li>标准模板：视觉编码器（CLIP/SigLIP）+ 投影器 + LM，分阶段训练，大部分功夫在数据上。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">09</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>ViT-L/14 处理一张 448×448 的图，有多少个 token？如果用 Qwen2-VL 的 2×2 合并呢？</summary><div>
+    <p>448 / 14 = 32，32 × 32 = 1024 个块 token。2×2 合并后为 16 × 16 = 256 个（再加两个特殊 token）。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>CLIP 为什么需要很大的 batch？SigLIP 为什么不那么需要？</summary><div>
+    <p>CLIP 的负例就是同一 batch 中的其他样本，softmax 需要足够多的负例才能学到细粒度的区分，而且要在整个 batch 上归一化。SigLIP 对每一对独立做二分类，损失与 batch 大小解耦，小 batch 下表现更好，也更容易分布式计算。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>LLaVA 第一阶段为什么只训练投影矩阵 W？</summary><div>
+    <p>视觉编码器和 LLM 都已经很强，但它们的表示空间不同。先只学一个投影，把图像特征对齐到 LLM 的嵌入空间，便宜且不会破坏两边已有的能力；对齐之后再联合微调 LM 学习多模态对话。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>为什么 Chameleon 这类离散 token 方法在 OCR 上吃亏？</summary><div>
+    <p>VQ-VAE 以很高的压缩率（每个 token 13 比特代表一大块像素）把图像离散化，重建目标偏向整体外观，小字等高频细节被丢掉。连续编码器（配合高分辨率切块）能保留更多细节。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>为什么多模态训练要特别注意平衡视频数据？</summary><div>
+    <p>视频产生的 token 极多，但每个 token 的信息密度低（相邻帧高度相似）。如果按 token 平均损失，视频会主导梯度，挤占文本能力。Qwen3-VL 用平方根归一化的逐样本损失、LLaVA-OneVision 用降低视频帧分辨率，都是在平衡各模态的贡献。</p>
+  </div></details>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_17.py 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_16.html">← 第16课 RLVR 与推理模型</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+
