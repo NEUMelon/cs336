@@ -1,0 +1,732 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第3课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_02.html">← 第2课 资源核算</a><a href="lecture_04.html">第4课 注意力替代与 MoE →</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 3</div>
+  <h1>模型架构与超参数：大模型们都在用什么</h1>
+  <p class="lede">你在作业 1 里实现的是一个“现代版” Transformer：pre-norm、RMSNorm、SwiGLU、RoPE、无 bias。这一课回答为什么选这些，并通过对比几十个公开模型，看哪些设计已成共识、哪些还在变化，以及训练稳定性的常用技巧。</p>
+  <div class="meta"><span><b>对应讲义</b> lecture_03.pdf</span><span><b>对应作业</b> Assignment 1（Transformer 实现）</span><span><b>下一课</b> MoE 与新架构</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#fp">1. 从第一性原理出发</a></li>
+<li><a href="#baseline">2. 起点：原始 Transformer 与现代变体</a></li>
+<li><a href="#norm">3. 归一化</a><ol>
+<li><a href="#prepost">Pre-norm vs post-norm：大家唯一的共识</a></li>
+<li><a href="#rms">LayerNorm vs RMSNorm</a></li>
+<li><a href="#bias">去掉 bias</a></li>
+</ol></li>
+<li><a href="#act">4. 激活函数与门控</a><ol>
+<li><a href="#glu">门控线性单元（GLU）</a></li>
+<li><a href="#parallel">串行 vs 并行层</a></li>
+</ol></li>
+<li><a href="#pos">5. 位置编码与 RoPE</a><ol>
+<li><a href="#rope">RoPE 的推导</a></li>
+</ol></li>
+<li><a href="#hparams">6. 超参数：意外的共识</a><ol>
+<li><a href="#dff">前馈维度与模型维度之比</a></li>
+<li><a href="#heads">头维度 × 头数 = 模型维度</a></li>
+<li><a href="#aspect">宽高比：d_model / n_layer</a></li>
+<li><a href="#vocab">词表大小</a></li>
+<li><a href="#reg">Dropout 与权重衰减</a></li>
+</ol></li>
+<li><a href="#stability">7. 训练稳定性技巧</a><ol>
+<li><a href="#zloss">输出 softmax：z-loss</a></li>
+<li><a href="#qknorm">注意力 softmax：QK-norm</a></li>
+<li><a href="#softcap">Logit 软截断</a></li>
+</ol></li>
+<li><a href="#attn">8. 注意力变体：为推理省钱</a><ol>
+<li><a href="#kv">为什么推理时注意力的算术强度很差</a></li>
+<li><a href="#mqa">MQA 与 GQA</a></li>
+<li><a href="#swa">稀疏与滑动窗口注意力</a></li>
+</ol></li>
+<li><a href="#summary">9. 本课要点</a></li>
+<li><a href="#quiz">10. 自测题</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>一个 Transformer 就是一条<strong>残差流（residual stream）</strong>：<code>x ← x + f(x)</code> 反复做 L 次，f 交替是注意力（在 token 之间混合信息）和 MLP（在每个 token 内部加工信息）。几乎所有架构选择都可以从三个目标推出来：</p>
+    <ol>
+      <li><strong>可优化</strong>：梯度要能沿残差流无损地传回很深的层；各处数值不能爆炸（softmax 里的指数最危险）。</li>
+      <li><strong>表达力</strong>：在参数量相同的前提下，让每个参数更“有用”（例如门控 GLU）。</li>
+      <li><strong>硬件效率</strong>：FLOPs 不等于运行时间，数据搬运同样要算钱；推理时 KV cache 的大小决定吞吐。</li>
+    </ol>
+  </div>
+  <p>讲者的主题：学习的最好方式是亲手实践，其次是从别人的经验里学习。2024–2025 年间仅稠密模型就发布了 19 个以上，大多只有细微的架构差别。这一课就是把它们放在一起对比：什么是共同的，什么在变，能学到什么。</p>
+</section>
+
+<section id="baseline">
+  <h2><span class="num">02</span>起点：原始 Transformer 与现代变体</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>组件</th><th>原始 Transformer（2017）</th><th>现代变体（作业 1 实现的）</th></tr></thead>
+      <tbody>
+        <tr><td>归一化位置</td><td>post-norm</td><td><strong>pre-norm</strong>（放在子层之前）</td></tr>
+        <tr><td>归一化类型</td><td>LayerNorm</td><td><strong>RMSNorm</strong></td></tr>
+        <tr><td>位置编码</td><td>正弦/余弦，加到输入上</td><td><strong>RoPE</strong>（旋转位置编码）</td></tr>
+        <tr><td>前馈激活</td><td>ReLU</td><td><strong>SwiGLU</strong></td></tr>
+        <tr><td>偏置项</td><td>有</td><td>线性层和归一化层<strong>都没有 bias</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>大趋势：“LLaMA 式”架构占统治地位；近年的新趋势是 QK-norm 和混合注意力（全局 + 局部交替）。</p>
+</section>
+
+<section id="norm">
+  <h2><span class="num">03</span>归一化</h2>
+  <h3 id="prepost">Pre-norm vs post-norm：大家唯一的共识</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 560 250" width="560" role="img" aria-label="post-norm 与 pre-norm 的结构对比">
+      <text x="140" y="18" text-anchor="middle" class="t-ink">Post-norm（原始 Transformer、BERT）</text>
+      <text x="420" y="18" text-anchor="middle" class="t-ink">Pre-norm（几乎所有现代 LM）</text>
+      <!-- post-norm -->
+      <g class="s-ink" stroke-width="1.5" fill="none">
+        <line x1="90" y1="230" x2="90" y2="36"/>
+        <path d="M90 200 H170 V172"/><path d="M170 132 V110 H96"/>
+      </g>
+      <rect class="f-chipa s-ink" x="130" y="132" width="80" height="40" rx="5"/>
+      <text x="170" y="157" text-anchor="middle">子层 f</text>
+      <circle class="f-surf s-ink" cx="90" cy="110" r="9"/><text x="90" y="114" text-anchor="middle" class="t-ink">+</text>
+      <rect class="f-amb s-ink" x="60" y="62" width="60" height="28" rx="5"/>
+      <text x="90" y="81" text-anchor="middle">Norm</text>
+      <text x="100" y="242" class="t-mono">x</text>
+      <text x="20" y="80" >残差流被</text><text x="20" y="96">归一化</text>
+      <!-- pre-norm -->
+      <g class="s-acc" stroke-width="2.5" fill="none"><line x1="370" y1="230" x2="370" y2="36"/></g>
+      <g class="s-ink" stroke-width="1.5" fill="none">
+        <path d="M370 210 H450 V196"/><path d="M450 168 V156"/><path d="M450 116 V100 H379"/>
+      </g>
+      <rect class="f-amb s-ink" x="420" y="168" width="60" height="28" rx="5"/>
+      <text x="450" y="187" text-anchor="middle">Norm</text>
+      <rect class="f-chipa s-ink" x="410" y="116" width="80" height="40" rx="5"/>
+      <text x="450" y="141" text-anchor="middle">子层 f</text>
+      <circle class="f-surf s-acc" cx="370" cy="100" r="9"/><text x="370" y="104" text-anchor="middle" class="t-ink">+</text>
+      <text x="380" y="242" class="t-mono">x</text>
+      <text x="300" y="70" class="t-acc">残差流</text><text x="300" y="86" class="t-acc">是恒等通路</text>
+    </svg>
+    <figcaption>左：输出 = Norm(x + f(x))，每一层都会对残差流做归一化。右：输出 = x + f(Norm(x))，残差流上没有任何变换。</figcaption>
+  </figure>
+  <div class="derive">
+    <p><strong>为什么 pre-norm 更好训练？</strong>对 pre-norm，<code>x_L = x_0 + Σ f_l(Norm(x_l))</code>，所以 <code>∂x_L/∂x_l = I + (…)</code>：总有一条恒等路径让梯度直接从输出流回任意一层。post-norm 的每一层都要穿过一次 Norm 的雅可比矩阵，梯度在深层网络中逐层衰减或放大。</p>
+  </div>
+  <ul>
+    <li>文献中的解释：梯度衰减（Xiong et al., 2020）、梯度尖峰（Salazar &amp; Nguyen, 2019）。</li>
+    <li>原本宣称的好处是可以去掉 warmup；今天的主要理由是<strong>稳定性</strong>，以及大网络上能用更大的学习率。</li>
+    <li>几乎所有现代 LM 都用 pre-norm（BERT 是 post-norm；OPT-350M 是个奇怪的例外）。</li>
+  </ul>
+  <p><strong>新做法：“双重”归一化或非残差 post-norm。</strong>如果把 Norm 放进残差流不好，那就在子层输出、加回残差流之前再做一次：<code>x + Norm(f(Norm(x)))</code>。Grok、Gemma 2 这样做；OLMo 2 只做子层输出的这一次（非残差 post-norm）。</p>
+
+  <h3 id="rms">LayerNorm vs RMSNorm</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>公式</th><th>代表模型</th></tr></thead>
+      <tbody>
+        <tr><td>LayerNorm</td><td><code>y = (x − μ) / √(σ² + ε) · γ + β</code></td><td>GPT-1/2/3、OPT、GPT-J、BLOOM</td></tr>
+        <tr><td>RMSNorm</td><td><code>y = x / √(mean(x²) + ε) · γ</code></td><td>LLaMA 家族、PaLM、Chinchilla、T5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>RMSNorm 不减均值、没有 bias β。常见解释是“更快，效果一样好”：运算更少、参数更少。</p>
+  <p>但这个解释说得通吗？矩阵乘法占了绝大部分 FLOPs，归一化的 FLOPs 微不足道。Ivanov et al. (2023) 对 BERT 的剖析给出答案：矩阵乘法占 99.8% 的 FLOPs，但只占约 61% 的运行时间；归一化只占约 0.17% 的 FLOPs，却占约 25% 的运行时间。原因是归一化是 memory-bound 的（上一课的算术强度）。</p>
+  <div class="key"><span class="label">重要教训</span><strong>FLOPs 不等于运行时间。</strong>对 memory-bound 的操作，少读写一个张量就是实打实的提速。Narang et al. (2020) 还发现 RMSNorm 在效果上也略有提升。</div>
+
+  <h3 id="bias">去掉 bias</h3>
+  <p>大多数现代 Transformer 没有 bias：<code>FFN(x) = σ(xW₁)W₂</code>。理由和 RMSNorm 类似（少存少搬），另外经验上对<strong>优化稳定性</strong>有好处。</p>
+</section>
+
+<section id="act">
+  <h2><span class="num">04</span>激活函数与门控</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>名称</th><th>前馈层形式</th><th>代表模型</th></tr></thead>
+      <tbody>
+        <tr><td>ReLU</td><td><code>max(0, xW₁) W₂</code></td><td>原始 Transformer、T5、Gopher、Chinchilla、OPT</td></tr>
+        <tr><td>GeLU</td><td><code>GELU(xW₁) W₂</code>，<code>GELU(x) = x·Φ(x)</code></td><td>GPT-1/2/3、GPT-J、GPT-NeoX、BLOOM</td></tr>
+        <tr><td>GeGLU</td><td><code>(GELU(xW₁) ⊗ xV) W₂</code></td><td>T5 v1.1、mT5、LaMDA、Phi-3、Gemma 2/3/4</td></tr>
+        <tr><td>SwiGLU</td><td><code>(Swish(xW₁) ⊗ xV) W₂</code>，<code>Swish(x) = x·sigmoid(x)</code></td><td>LLaMA 1/2/3、PaLM、Mistral、OLMo，2023 年后大多数模型</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="glu">门控线性单元（GLU）</h3>
+  <p>GLU 改的是前馈层的“第一部分”：原来是“线性 + 激活”，现在再乘上一个逐元素的线性项作为<strong>门</strong>：</p>
+  <div class="formula">max(0, xW₁)  →  max(0, xW₁) ⊗ (xV)</div>
+  <p>多了一个参数矩阵 V。直觉：一路决定“是否让信息通过”，另一路提供“通过的内容”，两者相乘让网络能表达乘法交互。</p>
+  <div class="derive">
+    <p><strong>为什么门控模型的 d_ff 缩小到 2/3？</strong>为了在参数量相同的前提下公平比较。</p>
+    <p>普通 FFN：两个矩阵 d×d_ff 和 d_ff×d，取 d_ff = 4d，参数 = 2 × d × 4d = <strong>8d²</strong>。</p>
+    <p>GLU FFN：三个矩阵（W₁、V、W₂），参数 = 3 × d × d_ff。令其等于 8d²，得 <strong>d_ff = 8d/3 ≈ 2.67d</strong>。</p>
+  </div>
+  <p>效果：Shazeer (2020) 和 Narang et al. (2020) 都显示 GLU 变体有相当一致的提升。GLU 不是必需的（GPT-3 没用也很好），但现在已经很少看到不用的了。少数异类：Nemotron 340B 用 squared ReLU。</p>
+
+  <h3 id="parallel">串行 vs 并行层</h3>
+  <p>标准块是串行的：先注意力，再 MLP。GPT-J 开创了并行层：<code>x + Attn(Norm(x)) + MLP(Norm(x))</code>。如果实现得当，Norm 可以共享，两个输入矩阵乘法可以融合。PaLM、GPT-NeoX、Cohere Command A/R+、Falcon 2 11B 用并行层，但大多数模型仍是串行。</p>
+</section>
+
+<section id="pos">
+  <h2><span class="num">05</span>位置编码与 RoPE</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>类型</th><th>做法</th><th>代表模型</th></tr></thead>
+      <tbody>
+        <tr><td>正弦编码</td><td><code>Embed(x, i) = v_x + PE_i</code>，PE 为固定的正弦余弦</td><td>原始 Transformer</td></tr>
+        <tr><td>绝对位置</td><td><code>Embed(x, i) = v_x + u_i</code>，u_i 可学习</td><td>GPT-1/2/3、OPT</td></tr>
+        <tr><td>相对位置</td><td>在注意力计算中加一个与 i−j 相关的向量</td><td>T5、Gopher、Chinchilla</td></tr>
+        <tr><td>RoPE</td><td>按位置旋转 q 和 k</td><td>GPT-J、PaLM、LLaMA，2024 年后大多数模型</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="rope">RoPE 的推导</h3>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>我们希望注意力分数只依赖<strong>相对位置</strong>：找一个函数 f(x, i) 把内容 x 和位置 i 结合起来，使得</p>
+    <p style="text-align:center"><code>⟨f(x, i), f(y, j)⟩ = g(x, y, i − j)</code></p>
+    <p>已有方案都不满足：正弦编码展开内积后有 <code>⟨v_x, PE_j⟩</code> 这类交叉项，不是相对的；绝对编码显然不是；相对位置编码能做到，但不是内积形式，没法用标准注意力 kernel。</p>
+    <p>关键观察：<strong>内积在旋转下不变</strong>。如果把位置 i 的向量旋转 i 个单位角度，那么两个向量的内积只取决于它们旋转角度之差。</p>
+  </div>
+  <div class="derive">
+    <p>设 <code>R_i</code> 是旋转 i·θ 的矩阵，<code>f(q, i) = R_i q</code>。旋转矩阵是正交的，且 <code>R_iᵀ R_j = R_{j−i}</code>，所以</p>
+    <p style="text-align:center"><code>⟨R_i q, R_j k⟩ = qᵀ R_iᵀ R_j k = qᵀ R_{j−i} k</code></p>
+    <p>结果只依赖 j − i。高维怎么旋转？最简单的做法（受复数启发）：把 d 维向量两两配对成 d/2 个二维平面，每个平面用自己的频率旋转：</p>
+    <p style="text-align:center"><code>(q₂ₖ, q₂ₖ₊₁) → 旋转角度 i·θₖ，θₖ = base^(−2k/d)，base 通常为 10000</code></p>
+    <p>低维度的配对转得快（编码局部位置），高维度的配对转得慢（编码远距离位置）。</p>
+  </div>
+  <p>和正弦编码的区别：RoPE 是<strong>乘法</strong>（旋转），不是加法，所以没有交叉项。实现上它作用在<strong>每一层注意力的 q 和 k</strong> 上，而不是只在输入处加一次，这样每一层的注意力都严格满足相对位置性质。v 不旋转。Gemma 4 的一个变体只对部分维度做旋转。</p>
+</section>
+
+<section id="hparams">
+  <h2><span class="num">06</span>超参数：意外的共识</h2>
+  <h3 id="dff">前馈维度与模型维度之比</h3>
+  <p>规则：<strong>d_ff = 4 d_model</strong>，几乎总是如此。GLU 变体按 2/3 缩放后是 8/3 ≈ 2.67：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">d_ff / d_model</th></tr></thead>
+      <tbody>
+        <tr><td>PaLM</td><td class="num">4</td></tr>
+        <tr><td>Mistral 7B、LLaMA-2 70B</td><td class="num">3.5</td></tr>
+        <tr><td>Yi 34B</td><td class="num">2.85</td></tr>
+        <tr><td>LLaMA 70B、DeepSeek 67B</td><td class="num">2.68</td></tr>
+        <tr><td>Qwen 14B</td><td class="num">2.67</td></tr>
+        <tr><td>T5 v1.1</td><td class="num">2.5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>大胆的例外是 T5 11B：d_ff = 65536、d_model = 1024，64 倍。它能工作，说明这个超参数不是铁律；但后续的 T5 v1.1 改回了标准的 2.5 倍 GeGLU，所以 64 倍大概并不理想。Kaplan et al. (2020) 显示比例在 1 到 10 之间都接近最优，是一个很宽的“盆地”。其他近期例外：Gemma 2（8 倍）、SmolLM/Gemma 3/Gemma 4（4 倍 GLU）。</p>
+
+  <h3 id="heads">头维度 × 头数 = 模型维度</h3>
+  <p>这不是必须的（头维度可以大于 d_model / 头数），但大多数模型都遵守：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">头数</th><th class="num">头维度</th><th class="num">d_model</th><th class="num">比值</th></tr></thead>
+      <tbody>
+        <tr><td>GPT-3</td><td class="num">96</td><td class="num">128</td><td class="num">12288</td><td class="num">1</td></tr>
+        <tr><td>T5</td><td class="num">128</td><td class="num">128</td><td class="num">1024</td><td class="num">16</td></tr>
+        <tr><td>T5 v1.1</td><td class="num">64</td><td class="num">64</td><td class="num">4096</td><td class="num">1</td></tr>
+        <tr><td>LaMDA</td><td class="num">128</td><td class="num">128</td><td class="num">8192</td><td class="num">2</td></tr>
+        <tr><td>PaLM</td><td class="num">48</td><td class="num">258</td><td class="num">18432</td><td class="num">1.48</td></tr>
+        <tr><td>LLaMA 2</td><td class="num">64</td><td class="num">128</td><td class="num">8192</td><td class="num">1</td></tr>
+        <tr><td>Qwen 3.5（27B）</td><td class="num">24</td><td class="num">256</td><td class="num">5120</td><td class="num">1.2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="aspect">宽高比：d_model / n_layer</h3>
+  <p>模型该深还是该宽？各家也惊人地一致，大多在 100–200 之间：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">d_model / n_layer</th></tr></thead>
+      <tbody>
+        <tr><td>BLOOM</td><td class="num">205</td></tr>
+        <tr><td>T5 v1.1</td><td class="num">171</td></tr>
+        <tr><td>PaLM 540B</td><td class="num">156</td></tr>
+        <tr><td>GPT-3 / OPT / Mistral / Qwen / OLMo 3</td><td class="num">128</td></tr>
+        <tr><td>LLaMA / LLaMA 2</td><td class="num">102</td></tr>
+        <tr><td>Gemma 3</td><td class="num">87</td></tr>
+        <tr><td>Gemma 4</td><td class="num">61</td></tr>
+        <tr><td>T5 11B</td><td class="num">33</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>效果上存在一个宽的最优区间（Kaplan 2020、Tay 2021）；真正决定选值的往往是系统因素：层数越多越难并行（流水线并行按层切），延迟也越高（层之间必须串行）。</p>
+
+  <h3 id="vocab">词表大小</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>单语模型</th><th class="num">词表</th><th>多语 / 生产系统</th><th class="num">词表</th></tr></thead>
+      <tbody>
+        <tr><td>原始 Transformer</td><td class="num">37,000</td><td>mT5</td><td class="num">250,000</td></tr>
+        <tr><td>GPT</td><td class="num">40,257</td><td>PaLM</td><td class="num">256,000</td></tr>
+        <tr><td>GPT-2/3</td><td class="num">50,257</td><td>GPT-4</td><td class="num">100,276</td></tr>
+        <tr><td>T5 / T5 v1.1</td><td class="num">32,128</td><td>Gemma 4</td><td class="num">262,144</td></tr>
+        <tr><td>LLaMA</td><td class="num">32,000</td><td>DeepSeek</td><td class="num">100,000</td></tr>
+        <tr><td></td><td class="num"></td><td>Qwen 15B</td><td class="num">152,064</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>单语模型 30–50K 就够；多语言模型需要大得多，因为要覆盖许多文字系统，否则非英语文本的压缩率会很差（回想第一课的压缩率）。</p>
+
+  <h3 id="reg">Dropout 与权重衰减</h3>
+  <p>预训练需要正则化吗？反对的理由：数据量（万亿 token）远多于参数，而且 SGD 通常只过一遍语料，很难记住。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">Dropout</th><th class="num">Weight decay</th></tr></thead>
+      <tbody>
+        <tr><td>原始 Transformer</td><td class="num">0.1</td><td class="num">0</td></tr>
+        <tr><td>GPT-2 / GPT-3 / OPT</td><td class="num">0.1</td><td class="num">0.1</td></tr>
+        <tr><td>T5</td><td class="num">0.1</td><td class="num">0</td></tr>
+        <tr><td>T5 v1.1</td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td>PaLM</td><td class="num">0</td><td class="num">可变</td></tr>
+        <tr><td>LLaMA</td><td class="num">0</td><td class="num">0.1</td></tr>
+        <tr><td>Qwen 14B</td><td class="num">0.1</td><td class="num">0.1</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>老模型预训练时常用 dropout；新模型（Qwen 除外）只用 weight decay。为什么还要 weight decay？Andriushchenko et al. (2023) 发现：<strong>它不是为了防止过拟合</strong>，而是和学习率（cosine 调度）相互作用，改变优化动态，最终让训练 loss 更低。</p>
+</section>
+
+<section id="stability">
+  <h2><span class="num">07</span>训练稳定性技巧</h2>
+  <p>近年来大家非常关注训练稳定性：loss 曲线出现尖峰甚至发散，对大模型是灾难。问题最常出在 <strong>softmax</strong> 上：指数会放大数值，还可能除以接近 0 的数。模型里有两个 softmax：输出层和注意力。</p>
+  <h3 id="zloss">输出 softmax：z-loss</h3>
+  <div class="derive">
+    <p>输出概率 <code>p(y) = e^{z_y} / Z</code>，<code>Z = Σ e^{z_k}</code>，所以 <code>log p(y) = z_y − log Z</code>。</p>
+    <p>如果能让 <code>log Z ≈ 0</code>（Z ≈ 1），那么 <code>log p(y) ≈ z_y</code>，logits 本身就是良好归一化的对数概率，不会漂移到很大的数值。</p>
+    <p>做法：在损失上加一个辅助项 <code>α · (log Z)²</code>，PaLM 取 α = 10⁻⁴。</p>
+  </div>
+  <p>使用者：PaLM、Baichuan 2、DCLM、OLMo 2、OLMo 3。</p>
+  <h3 id="qknorm">注意力 softmax：QK-norm</h3>
+  <p>在 q 和 k 进入点积之前，先对它们做 LayerNorm/RMSNorm。这样点积的大小有界，注意力 logits 不会爆炸。最早来自视觉和多模态模型（Dehghani 2023、Idefics、Chameleon），现在 DCLM、OLMo 2/3、Gemma 2/4、Qwen3 都在用。</p>
+  <h3 id="softcap">Logit 软截断</h3>
+  <p>用 tanh 把 logits 平滑地限制在某个最大值以内：<code>logits ← cap · tanh(logits / cap)</code>。能防止 logits 爆炸，但可能损失一点效果。</p>
+</section>
+
+<section id="attn">
+  <h2><span class="num">08</span>注意力变体：为推理省钱</h2>
+  <p>大多数模型不太改注意力头，少数例外都与推理成本有关：GQA/MQA 减少 KV 头数；稀疏或滑动窗口注意力限制注意力范围；状态空间模型等“另类”方案下一课讲。</p>
+  <h3 id="kv">为什么推理时注意力的算术强度很差</h3>
+  <p>记号：b = batch，n = 序列长度，d = 隐藏维度，h = 头数，k = d/h 为头维度。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>场景</th><th>运算量</th><th>内存访问</th><th>算术强度</th></tr></thead>
+      <tbody>
+        <tr><td>训练（整个序列一起算）</td><td>bnd²</td><td>bnd + bhn² + d²</td><td>O((1/k + 1/(bn))⁻¹)，很高</td></tr>
+        <tr><td>增量生成（KV cache）</td><td>bnd²</td><td>bn²d + nd²</td><td>O((n/d + 1/b)⁻¹)，差</td></tr>
+        <tr><td>MQA 增量生成</td><td>bnd²</td><td>bnd + bn²k + nd²</td><td>O((1/d + n/(dh) + 1/b)⁻¹)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>生成文本时必须一个 token 一个 token 地来，没法并行。为避免重复计算，缓存之前所有 token 的 K 和 V（<strong>KV cache</strong>），每步只算新 token。但每一步都要把整个 KV cache 从显存读一遍，n/d 这一项很难降下来：要想强度高，需要大 batch、短序列或大模型维度。</p>
+  <h3 id="mqa">MQA 与 GQA</h3>
+  <ul>
+    <li><strong>MQA（multi-query attention）</strong>：多个 query 头共享<strong>一个</strong> K 头和一个 V 头。KV cache 缩小为原来的 1/h。Shazeer (2019) 发现困惑度有小幅损失。</li>
+    <li><strong>GQA（grouped-query attention）</strong>：折中方案，把 query 头分成 g 组，每组共享一对 KV 头。g 是调节表达力与推理效率的旋钮。Ainslie et al. (2023) 显示几乎没有损失。</li>
+    <li>更进一步：DeepSeek V2 的 <strong>MLA</strong>（multi-head latent attention），把 KV 压缩到低维隐空间再缓存（下一课）。</li>
+  </ul>
+  <div class="derive">
+    <p><strong>补充：KV cache 有多大？</strong>以 LLaMA 2 70B 为例：80 层，64 个 query 头，头维度 128，GQA 用 8 个 KV 头，bf16。</p>
+    <p>每个 token 的 KV cache = 2（K 和 V）× 80 层 × 8 头 × 128 × 2 字节 ≈ <strong>0.33 MB</strong>。</p>
+    <p>如果是标准多头（64 个 KV 头），要 8 倍，约 2.6 MB/token。一个 4096 长度的请求：GQA 约 1.3 GB，MHA 约 10.7 GB。KV cache 越小，同一张卡上能并发的请求越多，decode 的 batch 就越大，算术强度也就越高。</p>
+  </div>
+  <h3 id="swa">稀疏与滑动窗口注意力</h3>
+  <p>全注意力的代价随长度平方增长。稀疏或结构化注意力（Child et al., 2019）用表达力换运行时间：GPT-3、GPT-OSS、Gemma 4 都用过。滑动窗口注意力（SWA）只看最近 w 个 token，KV cache 也只需存 w 个。</p>
+  <p><strong>当前标准做法：全局注意力和局部注意力交替。</strong>例如 Cohere Command A 每 4 层一层全注意力：长距离信息由不带位置编码（NoPE）的全注意力层负责，短距离信息由 RoPE + SWA 层负责。LLaMA 4、Gemma 3/4、OLMo 3 用 SWA + 全注意力（都带 RoPE）；Qwen 3.5 / Qwen 3 Next 把注意力和线性注意力交替。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">09</span>本课要点</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>话题</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr><td>Pre vs post norm</td><td>大家都把 Norm 移出残差流，有充分理由</td></tr>
+        <tr><td>LayerNorm vs RMSNorm</td><td>RMSNorm 有明显的运行时收益，有时效果也更好</td></tr>
+        <tr><td>门控</td><td>GLU 已成共识，d_ff ≈ 8/3 d_model</td></tr>
+        <tr><td>串行 vs 并行</td><td>多数用串行</td></tr>
+        <tr><td>位置编码</td><td>RoPE</td></tr>
+        <tr><td>头维度</td><td>头维度 × 头数 = d_model 是惯例，但验证很少</td></tr>
+        <tr><td>宽高比</td><td>100–200 都不错，由系统因素决定</td></tr>
+        <tr><td>正则化</td><td>仍然用 weight decay，但作用在优化动态，不在防过拟合</td></tr>
+        <tr><td>稳定性</td><td>z-loss、QK-norm、logit 软截断</td></tr>
+        <tr><td>推理效率</td><td>GQA、局部/全局交替注意力</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>各大模型在架构和超参数上的共同点很多，主要差别在位置编码、激活函数和分词。</p>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">10</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>d_model = 4096 的 SwiGLU 前馈层，想和 d_ff = 4d 的 ReLU 前馈层参数量相同，d_ff 该取多少？</summary><div>
+    <p>8/3 × 4096 ≈ 10923。实际常取一个方便硬件的数，比如 LLaMA 7B 用 11008（256 的倍数）。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>RMSNorm 的 FLOPs 很少，为什么换成它还能明显提速？</summary><div>
+    <p>归一化是 memory-bound 的：时间花在读写激活张量上，不在算术上。去掉减均值和 bias，减少了读写和参数搬运，运行时间直接下降。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>证明 RoPE 下注意力分数只依赖相对位置。</summary><div>
+    <p><code>⟨R_i q, R_j k⟩ = qᵀ R_iᵀ R_j k</code>。二维旋转满足 <code>R_iᵀ = R_{−i}</code> 且 <code>R_a R_b = R_{a+b}</code>，所以等于 <code>qᵀ R_{j−i} k</code>，只依赖 j − i。高维时各个二维平面相互独立，结论逐块成立。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>z-loss 惩罚的是什么？为什么这能提升稳定性？</summary><div>
+    <p>惩罚 softmax 归一化常数的对数 log Z 偏离 0。这样 logits 被“锚定”在对数概率的尺度上，不会整体漂移到很大的值，避免指数运算溢出和 bf16 下的精度损失。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>32 层、32 个 query 头、头维度 128 的模型，bf16，MHA 和 GQA（8 个 KV 头）下每 token 的 KV cache 分别多大？</summary><div>
+    <p>MHA：2 × 32 × 32 × 128 × 2 = 524,288 字节 = 0.5 MB。GQA：2 × 32 × 8 × 128 × 2 = 131,072 字节 = 0.125 MB，缩小 4 倍。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>预训练的 LLM 基本不会过拟合，为什么还用 weight decay？</summary><div>
+    <p>Andriushchenko et al. (2023) 发现 weight decay 的作用主要在优化动态：它和学习率调度相互作用（尤其在学习率衰减阶段），让模型最终达到更低的训练 loss，而不是提升泛化。</p>
+  </div></details>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_03.pdf（Tatsu Hashimoto 主讲） 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_02.html">← 第2课 资源核算</a> · <a href="lecture_04.html">第4课 注意力替代与 MoE →</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+

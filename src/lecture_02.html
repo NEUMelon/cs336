@@ -1,0 +1,339 @@
+<!--meta
+{
+ "num": 2,
+ "short": "资源核算",
+ "unit": "Basics",
+ "title": "资源核算：张量、FLOPs、内存与算术强度",
+ "lede": "训练一个模型要花多少算力、占多少显存、跑多久？这一课从最底层的张量出发，建立一套“餐巾纸估算”的方法：数清楚每个操作的 FLOPs 和搬运的字节数，就能判断瓶颈在哪里。",
+ "question": "给定一个计算，它需要多少 FLOPs、多少字节的内存和带宽？瓶颈在算力还是在搬数据？",
+ "source": "lecture_02.py",
+ "meta": {"对应源码": "lecture_02.py", "对应作业": "Assignment 1（资源核算部分）", "下一课": "模型架构"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>深度学习里的一切（数据、参数、梯度、优化器状态、激活值）都是<strong>张量</strong>。对张量只有两件事要花钱：</p>
+    <ol>
+      <li><strong>存储</strong>：内存 = 元素个数 × 每个元素的字节数。</li>
+      <li><strong>计算</strong>：每个操作做若干次浮点运算（FLOPs），同时要把输入从内存搬到计算单元、把输出搬回去（字节）。</li>
+    </ol>
+    <p>硬件给出两个上限：峰值算力（FLOP/s）和内存带宽（bytes/s）。如果计算和搬运可以完美重叠，一个操作的耗时就是</p>
+    <p style="text-align:center"><code>time = max( FLOPs / 峰值算力 , bytes / 带宽 )</code></p>
+    <p>这一课剩下的所有内容，都是在把这两个公式应用到训练的各个环节上。</p>
+  </div>
+  <p>回忆课程的核心问题：给定固定资源（算力、内存），能训练出的最好模型是什么？前提是先搞清楚一次计算到底消耗多少资源。这一课的三类收获：</p>
+  <ul>
+    <li><strong>机制</strong>：PyTorch 张量的语义，很直接。</li>
+    <li><strong>思维方式</strong>：养成做资源核算的习惯。</li>
+    <li><strong>直觉</strong>：对资源花在哪里有感觉。这一课没有“机器学习魔法”。</li>
+  </ul>
+</section>
+
+<section id="napkin">
+  <h2><span class="num">02</span>两个餐巾纸估算</h2>
+  <h3 id="q-time">问题一：1024 张 H100 训练 70B 模型、15T token，要多久？</h3>
+  <div class="derive">
+    <p>总计算量：<code>6 × 70×10⁹ × 15×10¹² = 6.3×10²⁴ FLOPs</code>（6ND 的来源见第 7 节）。</p>
+    <p>H100 的 bf16 稠密峰值约 989 TFLOP/s（规格表上的 1979 是带 2:4 稀疏的数字，要除以 2）。假设 MFU = 0.5：</p>
+    <p>每天能做 <code>989.5×10¹² × 0.5 × 1024 × 86400 ≈ 4.38×10²² FLOPs</code>。</p>
+    <p>所需天数：<code>6.3×10²⁴ ÷ 4.38×10²² ≈ <strong>144 天</strong></code>。</p>
+  </div>
+  <h3 id="q-mem">问题二：8 张 H100 用 AdamW，最大能训多大的模型？</h3>
+  <div class="derive">
+    <p>每个参数要存：参数 bf16（2 字节）+ 梯度 bf16（2 字节）+ Adam 的一阶和二阶矩 fp32（4 + 4 字节）= <strong>12 字节</strong>。</p>
+    <p>8 × 80 GB ÷ 12 字节 ≈ <strong>533 亿参数（约 53B）</strong>。</p>
+    <p>这是上界：没算激活值（它取决于 batch size 和序列长度）。实际上很多实现还会保留一份 fp32 主权重，每参数 16 字节，上限会更低。</p>
+  </div>
+  <p>这些估算很粗糙，但能让你迅速判断一件事是否可行，这就是这一课想培养的习惯。</p>
+</section>
+
+<section id="memory">
+  <h2><span class="num">03</span>内存核算：张量与浮点格式</h2>
+  <h3 id="tensors">张量</h3>
+  <p>张量的 rank 是维度个数。Transformer 里常见 rank 4 的张量，例如 <code>(B, S, H, D)</code> = (batch, 序列长度, 头数, 每头维度)。一个张量占的内存由两件事决定：<strong>元素个数</strong>和<strong>数据类型</strong>。</p>
+  <pre>x = torch.zeros(4, 8)          <span class="c"># 默认 float32</span>
+x.numel() * x.element_size()   <span class="c"># 32 × 4 = 128 字节</span></pre>
+  <p>GPT-3 前馈层的一个矩阵 <code>(4×12288, 12288)</code>，fp32 下就占 2304 MiB，约 2.3 GB。</p>
+
+  <h3 id="floats">浮点格式：用位数换精度和范围</h3>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>浮点数 = 符号 × 尾数 × 2^指数。<strong>指数位</strong>决定能表示的数量级范围（动态范围），<strong>尾数位</strong>决定相邻两个数之间有多密（精度）。总位数固定时，两者此消彼长。深度学习对精度很宽容，但对范围很敏感：梯度和激活值跨越很多数量级，一旦下溢成 0 或上溢成 inf，训练就崩了。</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>格式</th><th class="num">字节</th><th class="num">符号/指数/尾数</th><th>特点</th></tr></thead>
+      <tbody>
+        <tr><td>fp32</td><td class="num">4</td><td class="num">1 / 8 / 23</td><td>默认格式，范围和精度都够；科学计算里是基线</td></tr>
+        <tr><td>fp16</td><td class="num">2</td><td class="num">1 / 5 / 10</td><td>省一半内存，但范围小：<code>1e-8</code> 直接下溢成 0，训练易不稳定</td></tr>
+        <tr><td>bf16</td><td class="num">2</td><td class="num">1 / 8 / 7</td><td>Google Brain 2018 年提出；指数位和 fp32 一样，范围相同，只牺牲精度</td></tr>
+        <tr><td>fp8 E4M3</td><td class="num">1</td><td class="num">1 / 4 / 3</td><td>2022 年标准化，范围 [-448, 448]，H100 支持</td></tr>
+        <tr><td>fp8 E5M2</td><td class="num">1</td><td class="num">1 / 5 / 2</td><td>范围 [-57344, 57344]，精度更低</td></tr>
+        <tr><td>NVFP4</td><td class="num">0.5</td><td class="num">1 / 2 / 1</td><td>2025 年 NVIDIA 提出；每个值只有 15 种取值，靠每块一个缩放因子扩大范围</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>NVFP4 的全部取值：±{0, 0.5, 1, 1.5, 2, 3, 4, 6}。每个小块共享一个缩放因子，所以整体范围反而更大，代价是同一块内的数不能随意差太多。Nemotron 3 Super 就是用 NVFP4 训练的。</p>
+
+  <h3 id="mixed">混合精度训练</h3>
+  <p>全用 fp32 能训练，但费内存；全用 fp16/bf16 有不稳定的风险。折中方案是<strong>混合精度</strong>（Micikevicius et al., 2017）：</p>
+  <ul>
+    <li>参数、激活值、梯度用 bf16；</li>
+    <li>优化器状态用 fp32。</li>
+  </ul>
+  <p>为什么优化器状态要 fp32？它是在许多步上累积的滑动平均（梯度的一阶、二阶矩）。每步的增量很小，低精度下“大数 + 小数”会把小数直接舍掉，累积误差会越来越大。PyTorch 的 AMP（<code>torch.amp.autocast</code>）会在安全的地方（如矩阵乘法）自动转成 bf16，在危险的地方（如 <code>exp</code>）保留 fp32。</p>
+
+  <h3 id="gpu">张量在 GPU 上</h3>
+  <p>张量默认在 CPU 内存里。要用 GPU 的大规模并行，就得把它搬到显存（<code>x.to("cuda")</code>），或者直接在 GPU 上创建。CPU 与 GPU 之间的传输很慢，应尽量避免来回搬。</p>
+</section>
+
+<section id="einops">
+  <h2><span class="num">04</span>einops：给维度起名字</h2>
+  <p>传统写法 <code>x @ y.transpose(-2, -1)</code> 很容易搞错维度：-2、-1 到底是哪一维？einops 受爱因斯坦求和约定启发，让你用名字描述维度。</p>
+  <h3 id="einsum">einsum：带记账的广义矩阵乘法</h3>
+  <pre>z = einsum(x, y, <span class="c">"batch seq1 hidden, batch seq2 hidden -&gt; batch seq1 seq2"</span>)
+z = einsum(x, y, <span class="c">"... seq1 hidden, ... seq2 hidden -&gt; ... seq1 seq2"</span>)  <span class="c"># ... 表示任意前导维度</span></pre>
+  <p>规则只有一条：<strong>输出里没出现的维度会被求和</strong>。上例中 <code>hidden</code> 被求和掉，就是注意力分数 QKᵀ 的计算。</p>
+  <h3 id="reduce">reduce 和 rearrange</h3>
+  <pre>y = reduce(x, <span class="c">"... hidden -&gt; ..."</span>, <span class="c">"sum"</span>)                        <span class="c"># 等价于 x.sum(-1)</span>
+x = rearrange(x, <span class="c">"... (heads hidden1) -&gt; ... heads hidden1"</span>, heads=2)  <span class="c"># 拆开一个合并的维度</span>
+x = einsum(x, w, <span class="c">"... hidden1, hidden1 hidden2 -&gt; ... hidden2"</span>)
+x = rearrange(x, <span class="c">"... heads hidden2 -&gt; ... (heads hidden2)"</span>)       <span class="c"># 再合并回去</span></pre>
+  <p>多头注意力里“把 d_model 拆成 heads × d_head”正是这种模式。</p>
+</section>
+
+<section id="flops">
+  <h2><span class="num">05</span>计算核算：FLOPs 与 MFU</h2>
+  <p>一次浮点运算（FLOP）是一次加法或乘法。两个极易混淆的缩写（读音还一样）：</p>
+  <ul>
+    <li><strong>FLOPs</strong>：浮点运算次数，衡量计算量。</li>
+    <li><strong>FLOP/s</strong>（也写作 FLOPS）：每秒浮点运算次数，衡量硬件速度。</li>
+  </ul>
+  <h3 id="scale">量级感</h3>
+  <div class="tbl">
+    <table>
+      <tbody>
+        <tr><td>训练 GPT-3（2020）</td><td class="num">3.14×10²³ FLOPs</td></tr>
+        <tr><td>训练 GPT-4（2023，推测）</td><td class="num">2×10²⁵ FLOPs</td></tr>
+        <tr><td>H100 bf16 稠密峰值</td><td class="num">989 TFLOP/s</td></tr>
+        <tr><td>8 张 H100 跑 2 周（满峰值）</td><td class="num">9.6×10²¹ FLOPs</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="matmul-flops">矩阵乘法的 FLOPs</h3>
+  <div class="derive">
+    <p><code>y = x @ w</code>，x 形状 (B, D)，w 形状 (D, K)。输出有 B×K 个元素，每个是长度 D 的点积：D 次乘法 + 约 D 次加法。</p>
+    <p>所以 <code>FLOPs = 2 × B × D × K</code>。</p>
+    <p>记法：<strong>矩阵乘法的 FLOPs = 2 × 三个维度之积</strong>。对每个 (i, j, k) 三元组，恰好一次乘法一次加法。</p>
+  </div>
+  <p>讲义在 H100 上实测 B=16384、D=32768、K=8192 的 fp32 矩阵乘法：8.8×10¹² FLOPs 用时 0.165 秒，实际 53 TFLOP/s。H100 的 fp32 峰值为 67.5 TFLOP/s，所以利用率约 0.79。注意峰值强烈依赖数据类型：同一张卡 bf16 峰值是 fp32 的约 15 倍。</p>
+  <h3 id="mfu">MFU（Model FLOPs Utilization）</h3>
+  <div class="formula">MFU = 实际 FLOP/s ÷ 峰值 FLOP/s<small>只计模型本身需要的 FLOPs，不算通信、重计算等开销</small></div>
+  <p>MFU ≥ 0.5 就已经相当好了。为什么到不了 1？要回答这个问题，得看数据是怎么在 GPU 里流动的。</p>
+</section>
+
+<section id="intensity">
+  <h2><span class="num">06</span>算术强度与 roofline</h2>
+  <p>计算一个东西分三步：把输入从内存送到计算单元 → 计算 → 把输出写回内存。耗时取决于算力（FLOP/s）和内存带宽（bytes/s）。H100 的两个数字：989 TFLOP/s（bf16）和 3.35 TB/s。</p>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>把耗时公式 <code>max(FLOPs/峰值, bytes/带宽)</code> 两边同除以 bytes，比较的就变成两个“每字节的 FLOPs”：</p>
+    <ul>
+      <li><strong>加速器强度</strong> = 峰值算力 ÷ 带宽 = 硬件每搬 1 字节<em>能</em>做多少运算。H100：989×10¹² ÷ 3.35×10¹² ≈ <strong>295 FLOPs/字节</strong>。</li>
+      <li><strong>算术强度</strong> = 操作的 FLOPs ÷ 搬运字节数 = 这个操作每搬 1 字节<em>需要</em>做多少运算。</li>
+    </ul>
+    <p>算术强度 &lt; 加速器强度 → <strong>memory-bound</strong>（算力在等数据）；反之 → <strong>compute-bound</strong>。</p>
+  </div>
+  <h3 id="ai-examples">逐个算一遍（bf16，每个数 2 字节）</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>操作</th><th>FLOPs</th><th>搬运字节</th><th class="num">算术强度</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr><td>ReLU（n 个元素）</td><td>n 次比较</td><td>读 2n + 写 2n</td><td class="num">0.25</td><td>memory-bound</td></tr>
+        <tr><td>GeLU</td><td>≈ 20n</td><td>4n</td><td class="num">5</td><td>memory-bound</td></tr>
+        <tr><td>点积（长度 n）</td><td>2n − 1</td><td>4n + 2</td><td class="num">≈ 0.5</td><td>memory-bound</td></tr>
+        <tr><td>矩阵 × 向量（n×n）</td><td>n(2n − 1)</td><td>2n² + 4n</td><td class="num">≈ 1</td><td>memory-bound</td></tr>
+        <tr><td>矩阵 × 矩阵（n=1024）</td><td>n²(2n − 1)</td><td>6n²</td><td class="num">≈ n/3 = 341</td><td><strong>compute-bound</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>ReLU 的例子：搬运耗时 1.25 μs，计算耗时约 0.001 μs，差了三个数量级。几个推论：</p>
+  <ul>
+    <li><strong>单独执行时，ReLU 并不比 GeLU 快</strong>。两者都卡在搬数据上，GeLU 多出来的计算是“免费”的。</li>
+    <li>矩阵乘法的算术强度随 n 线性增长（n³ 次运算，只搬 n² 个数），所以<strong>只要矩阵足够大就是 compute-bound</strong>。临界点大约是 n ≈ 3 × 295 ≈ 890。</li>
+    <li>训练是大矩阵乘矩阵，能跑满算力；推理的 decode 阶段本质是矩阵乘向量，所以是 memory-bound。</li>
+    <li>加速器强度也和精度有关：换成 fp32，峰值算力降得比带宽快，临界点会移动。</li>
+  </ul>
+  <h3 id="roofline">Roofline 图</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 580 300" width="580" role="img" aria-label="H100 的 roofline 图：横轴算术强度，纵轴可达性能，五个操作的位置">
+      <g class="s-line" stroke-width="1">
+        <line x1="60" y1="20" x2="540" y2="20"/><line x1="60" y1="80" x2="540" y2="80"/><line x1="60" y1="140" x2="540" y2="140"/><line x1="60" y1="200" x2="540" y2="200"/>
+        <line x1="180" y1="20" x2="180" y2="260"/><line x1="300" y1="20" x2="300" y2="260"/><line x1="420" y1="20" x2="420" y2="260"/>
+      </g>
+      <g class="s-ink" stroke-width="1.2"><line x1="60" y1="260" x2="540" y2="260"/><line x1="60" y1="20" x2="60" y2="260"/></g>
+      <polyline class="s-acc f-none" stroke-width="2.5" points="60,228.5 476.4,20.3 540,20.3"/>
+      <line class="s-ink" stroke-dasharray="4 4" x1="476.4" y1="20.3" x2="476.4" y2="260"/>
+      <g class="t-mono">
+        <text x="60" y="276" text-anchor="middle">0.1</text><text x="180" y="276" text-anchor="middle">1</text><text x="300" y="276" text-anchor="middle">10</text><text x="420" y="276" text-anchor="middle">100</text><text x="540" y="276" text-anchor="middle">1000</text>
+        <text x="54" y="24" text-anchor="end">10¹⁵</text><text x="54" y="84" text-anchor="end">10¹⁴</text><text x="54" y="144" text-anchor="end">10¹³</text><text x="54" y="204" text-anchor="end">10¹²</text><text x="54" y="264" text-anchor="end">10¹¹</text>
+      </g>
+      <text x="300" y="294" text-anchor="middle">算术强度（FLOPs / 字节，对数轴）</text>
+      <text x="470" y="240" text-anchor="end" class="t-acc">拐点 ≈ 295</text>
+      <text x="250" y="40" class="t-acc">峰值 989 TFLOP/s</text>
+      <text x="120" y="120" transform="rotate(-27 120 120)">带宽 3.35 TB/s × 强度</text>
+      <g class="f-surf s-ink" stroke-width="1.5">
+        <circle cx="107.8" cy="204.6" r="4.5"/><circle cx="143.9" cy="186.6" r="4.5"/><circle cx="180" cy="168.5" r="4.5"/><circle cx="263.9" cy="126.6" r="4.5"/><circle cx="484" cy="20.3" r="4.5"/>
+      </g>
+      <text x="112" y="222">ReLU</text>
+      <text x="148" y="204">点积</text>
+      <text x="185" y="186">矩阵×向量</text>
+      <text x="268" y="144">GeLU</text>
+      <text x="492" y="40" class="t-ink">矩阵乘法</text>
+    </svg>
+    <figcaption>H100（bf16）的 roofline：横轴是操作的算术强度，纵轴是能达到的 FLOP/s（对数轴）。拐点左边受带宽限制，右边受算力限制。</figcaption>
+  </figure>
+  <p>每种硬件对应一条折线，拐点就是它的加速器强度；每个操作对应横轴上一个位置。于是：</p>
+  <div class="formula">MFU ≤ min(1, 算术强度 ÷ 加速器强度)</div>
+</section>
+
+<section id="backward">
+  <h2><span class="num">07</span>训练的核算：梯度与 6ND</h2>
+  <h3 id="grad-basics">反向传播回顾</h3>
+  <p>简单线性模型 <code>loss = 0.5 (x·w − 5)²</code>，x = [1, 2, 3]，w = [1, 1, 1]。前向得到 x·w = 6，反向 <code>∂loss/∂w = (x·w − 5) x = [1, 2, 3]</code>。PyTorch 的 <code>loss.backward()</code> 就是自动做这件事。</p>
+  <h3 id="grad-flops">一层的反向要多少 FLOPs</h3>
+  <p>考虑两层线性网络中的第二层 <code>h2 = h1 @ w2</code>，h1 形状 (B, D)，w2 形状 (D, D)。</p>
+  <div class="derive">
+    <p><strong>前向</strong>：一次矩阵乘法，<code>2BD²</code> FLOPs。</p>
+    <p><strong>反向</strong>：已知 <code>h2.grad</code>（形状 (B, D)），要算两样东西：</p>
+    <ul>
+      <li>对输入的梯度（继续往前传）：<code>h1.grad = h2.grad @ w2ᵀ</code>，<code>2BD²</code> FLOPs；</li>
+      <li>对权重的梯度（用来更新）：<code>w2.grad = h1ᵀ @ h2.grad</code>，<code>2BD²</code> FLOPs。</li>
+    </ul>
+    <p>反向合计 <code>4BD²</code>，是前向的 2 倍。</p>
+  </div>
+  <p>把所有层加起来，参数总量 N = Σ D²，数据点（token）数为 B：</p>
+  <div class="formula">前向 2BN + 反向 4BN = 6BN FLOPs / 每步<small>整个训练：C ≈ 6 × 参数量 × 训练 token 数 = 6ND</small></div>
+  <p>这个推导针对 MLP，但对 Transformer 也是很好的近似，只要上下文不太长（注意力分数那部分 FLOPs 和参数无关，随序列长度平方增长，长上下文时不能忽略）。</p>
+  <div class="note"><span class="label">补充：为什么是“每个参数每个 token 2 FLOPs”</span>
+    <p>前向时，每个权重对每个 token 恰好参与一次乘加（乘上输入、加到输出）。所以前向 FLOPs ≈ 2 × 参数量 × token 数，和网络形状无关。这也给推理一个快速估算：生成一个 token 大约要 2N FLOPs。</p>
+  </div>
+</section>
+
+<section id="optim">
+  <h2><span class="num">08</span>优化器与内存全景</h2>
+  <h3 id="optim-family">优化器家族</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>优化器</th><th>在 SGD 基础上加了什么</th><th class="num">额外状态</th></tr></thead>
+      <tbody>
+        <tr><td>Momentum</td><td>梯度的指数滑动平均</td><td class="num">1 份</td></tr>
+        <tr><td>AdaGrad</td><td>除以历史梯度平方和的平方根</td><td class="num">1 份</td></tr>
+        <tr><td>RMSProp</td><td>AdaGrad，但梯度平方改成指数滑动平均</td><td class="num">1 份</td></tr>
+        <tr><td>Adam</td><td>RMSProp + momentum</td><td class="num">2 份</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>讲义手写了 AdaGrad：</p>
+  <pre><span class="k">class</span> AdaGrad(torch.optim.Optimizer):
+    <span class="k">def</span> step(self):
+        <span class="k">for</span> group <span class="k">in</span> self.param_groups:
+            <span class="k">for</span> p <span class="k">in</span> group[<span class="c">"params"</span>]:
+                state = self.state[p]
+                g2 = state.get(<span class="c">"g2"</span>, torch.zeros_like(p.grad))
+                g2 += torch.square(p.grad)          <span class="c"># 累积梯度平方</span>
+                state[<span class="c">"g2"</span>] = g2
+                p.data -= group[<span class="c">"lr"</span>] * p.grad / torch.sqrt(g2 + 1e-5)</pre>
+  <p>直觉：梯度一直很大的方向，步长被压小；梯度很小的方向，步长相对放大。每个参数都有了自适应的学习率。</p>
+
+  <h3 id="mem-total">一次训练要存什么</h3>
+  <p>L 层、每层 D×D、batch 为 B 的网络：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>内容</th><th>精度</th><th>字节数</th></tr></thead>
+      <tbody>
+        <tr><td>参数</td><td>bf16</td><td>2 × N</td></tr>
+        <tr><td>梯度</td><td>bf16</td><td>2 × N</td></tr>
+        <tr><td>优化器状态</td><td>fp32</td><td>AdaGrad 4 × N，Adam 8 × N</td></tr>
+        <tr><td>激活值</td><td>bf16</td><td>2 × B × D × L（与 batch 成正比）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>讲义例子 B=2、D=4、L=3（N=48）：参数 96 + 梯度 96 + AdaGrad 状态 192 + 激活 48 = 432 字节；一步训练 6 × 2 × 48 = 576 FLOPs。Transformer 的核算更复杂，但思路完全一样，作业 1 会要求你亲手算一遍。</p>
+
+  <h3 id="loop">训练循环</h3>
+  <pre><span class="k">for</span> t <span class="k">in</span> range(num_train_steps):
+    x, y = get_batch()
+    loss = F.mse_loss(model(x).mean(), y)   <span class="c"># 前向</span>
+    loss.backward()                         <span class="c"># 反向：算梯度</span>
+    optimizer.step()                        <span class="c"># 更新参数</span>
+    optimizer.zero_grad(set_to_none=True)   <span class="c"># 释放梯度内存</span></pre>
+</section>
+
+<section id="savemem">
+  <h2><span class="num">09</span>用计算换内存</h2>
+  <h3 id="grad-accum">梯度累积</h3>
+  <p>大 batch 能让训练更稳定，但激活值内存随 batch 线性增长，可能放不下。梯度累积的做法：</p>
+  <ol>
+    <li>把一个 batch 切成若干 micro-batch，逐个做前向和反向；</li>
+    <li>梯度累加起来，不清零；</li>
+    <li>每处理完 <code>batch_size / micro_batch_size</code> 个 micro-batch，更新一次参数并清零梯度。</li>
+  </ol>
+  <p>例：B=64、D=1024、L=16，bf16 激活值 2×64×1024×16 ≈ 2 MB；切成 4 份后，同时只需存约 0.5 MB。数学上结果完全相同（损失是样本平均），代价是失去了一部分并行度。</p>
+  <h3 id="ckpt">激活检查点（activation checkpointing）</h3>
+  <p>也叫 gradient checkpointing 或 rematerialization。训练必须保存所有层的激活值，因为反向要用；推理不算梯度，只需保留当前层。</p>
+  <ul>
+    <li><strong>前向</strong>：只在部分层保存激活值（检查点）。</li>
+    <li><strong>反向</strong>：需要时，从最近的检查点重新计算缺失的激活值。</li>
+  </ul>
+  <pre><span class="c"># 全部保存：     x g1 h1 g2 h2 g3 h3 g4 h4</span>
+<span class="c"># 激活检查点：   x    h1    h2    h3    h4     （g 是层内中间结果，反向时重算）</span>
+x = torch.utils.checkpoint.checkpoint(layer, x)</pre>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>策略</th><th>激活内存</th><th>额外计算</th></tr></thead>
+      <tbody>
+        <tr><td>每层都存</td><td>O(L)</td><td>无</td></tr>
+        <tr><td>一层都不存</td><td>O(1)</td><td>O(L²)，每层都要从头重算</td></tr>
+        <tr><td>每 √L 层存一个</td><td>O(√L)</td><td>O(L)，约多做一次前向</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><span class="label">补充：为什么是 √L</span>
+    <p>每隔 k 层存一个检查点，要存 L/k 个检查点；反向经过一段时，需要把这段 k 层的激活值重算并暂存。峰值内存 ≈ L/k + k，在 k = √L 时最小，为 2√L。重算总量是每层一次，也就是再做一次前向，训练整体大约慢 1/3（前向占 6N 里的 2N）。</p>
+  </div>
+  <p class="muted">讲义用小网络在 GPU 上实测峰值内存，开不开检查点都是约 202 MB。原因是这个玩具网络的参数和梯度远大于激活值；在真实的长序列、大 batch 训练中，激活值才是大头，检查点的效果才明显。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">10</span>本课要点</h2>
+  <ul>
+    <li>一切都是张量上的操作：参数、梯度、激活值、优化器状态、数据。</li>
+    <li>内存 = 元素数 × 字节数。bf16 保留 fp32 的范围、牺牲精度；混合精度训练里，优化器状态用 fp32。</li>
+    <li>einops 用命名维度来描述张量运算，更不容易出错。</li>
+    <li>矩阵乘法 FLOPs = 2 × 三维乘积；训练每步 ≈ 6 × token 数 × 参数量。</li>
+    <li>算术强度 vs 加速器强度决定 memory-bound 还是 compute-bound。矩阵乘法 compute-bound，逐元素操作 memory-bound。</li>
+    <li>梯度累积和激活检查点都是用计算（或时间）换内存，以支持更大的 batch。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">11</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>用 Adam 和混合精度（bf16 参数和梯度、fp32 的两个矩），7B 模型不算激活值要多少显存？</summary><div>
+    <p>每参数 2 + 2 + 4 + 4 = 12 字节，7×10⁹ × 12 = 84 GB，单张 80 GB 的 H100 放不下。若再保留 fp32 主权重（+4 字节），是 112 GB。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>一个 (4096, 4096) 乘 (4096, 4096) 的 bf16 矩阵乘法，算术强度多少？在 H100 上是哪种 bound？</summary><div>
+    <p>FLOPs ≈ 2×4096³ ≈ 1.37×10¹¹；字节 = 3 × 4096² × 2 ≈ 1.0×10⁸。算术强度 ≈ 4096/3 ≈ 1365 &gt; 295，compute-bound。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>为什么说“单独执行时 ReLU 不比 GeLU 快”？</summary><div>
+    <p>两者都要读 n 个数、写 n 个数，搬运量相同。算术强度分别是 0.25 和 5，都远低于 295，耗时都由搬运决定。GeLU 多出的计算藏在等数据的时间里。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>反向传播为什么是前向的 2 倍 FLOPs？</summary><div>
+    <p>每个线性层反向要做两次同规模的矩阵乘法：一次算对输入的梯度（向前传递），一次算对权重的梯度（用于更新）。前向只有一次。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>batch=1 的 decode，为什么 MFU 很低？</summary><div>
+    <p>每个线性层变成矩阵乘向量，算术强度约为 1，远低于 H100 的 295。GPU 大部分时间在等权重从 HBM 搬过来，理论 MFU 上限约 1/295 ≈ 0.3%。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>用 C = 6ND 反推：GPT-3 用了 3.14×10²³ FLOPs、175B 参数，训练了多少 token？</summary><div>
+    <p>D = 3.14×10²³ ÷ (6 × 1.75×10¹¹) ≈ 3×10¹¹，约 300B token，和论文报告的一致。</p>
+  </div></details>
+</section>

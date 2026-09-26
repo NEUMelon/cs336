@@ -1,0 +1,655 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第4课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_03.html">← 第3课 架构与超参数</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 4</div>
+  <h1>注意力的替代方案与混合专家（MoE）</h1>
+  <p class="lede">上下文越长，注意力越贵；模型越大，每个 token 的计算越贵。这一课讲两类“打破比例关系”的办法：线性注意力、Mamba-2、Gated DeltaNet 和稀疏注意力让长度成本变成线性；混合专家让参数量和每 token 的计算量脱钩。最后拆解 DeepSeek V3 的完整设计。</p>
+  <div class="meta"><span><b>对应讲义</b> lecture_04.pdf</span><span><b>对应作业</b> —</span><span><b>下一课</b> GPU</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#fp">1. 从第一性原理出发</a></li>
+<li><a href="#linear">2. 线性注意力</a><ol>
+<li><a href="#assoc">一个“很傻但很重要”的变换</a></li>
+<li><a href="#recurrent">循环形式：注意力其实是 RNN</a></li>
+<li><a href="#mamba2">Mamba-2：加入数据相关的门控</a></li>
+<li><a href="#gdn">Gated DeltaNet：选择性擦除</a></li>
+<li><a href="#hybrid">混合模型的效果</a></li>
+</ol></li>
+<li><a href="#dsa">3. 另一条路：稀疏注意力（DSA）</a></li>
+<li><a href="#moe">4. 混合专家：是什么，为什么流行</a><ol>
+<li><a href="#why-moe">为什么 MoE 越来越流行</a></li>
+<li><a href="#why-not">为什么 MoE 以前没那么流行</a></li>
+</ol></li>
+<li><a href="#routing">5. 路由</a><ol>
+<li><a href="#topk">Top-k 路由的细节</a></li>
+<li><a href="#finegrained">细粒度专家与共享专家</a></li>
+</ol></li>
+<li><a href="#train">6. 怎么训练 MoE</a><ol>
+<li><a href="#balance">负载均衡损失</a></li>
+<li><a href="#auxfree">DeepSeek V3：“无辅助损失”的均衡</a></li>
+</ol></li>
+<li><a href="#moe-systems">7. MoE 的系统问题与训练难题</a><ol>
+<li><a href="#ep">并行与通信</a></li>
+<li><a href="#stochastic">MoE 的额外随机性</a></li>
+<li><a href="#moe-stab">稳定性</a></li>
+<li><a href="#ft">微调</a></li>
+<li><a href="#upcycle">Upcycling：用稠密模型初始化 MoE</a></li>
+</ol></li>
+<li><a href="#deepseek">8. 案例：DeepSeek V1 → V2 → V3</a><ol>
+<li><a href="#mla">MLA：多头潜在注意力</a></li>
+<li><a href="#mtp">MTP：多 token 预测</a></li>
+</ol></li>
+<li><a href="#summary">9. 本课要点</a></li>
+<li><a href="#quiz">10. 自测题</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>注意力的成本从哪来？</strong><code>softmax(QKᵀ)V</code> 要算出 n×n 的分数矩阵，训练是 O(n²d)；推理时每个新 token 要读整个 KV cache，内存随 n 线性增长且永不压缩。本质上，注意力把全部历史<strong>原样保存</strong>，想查什么都能精确查到，代价是存储和计算随历史增长。</p>
+    <p><strong>另一个极端是 RNN</strong>：把历史压缩进一个<strong>固定大小的状态</strong>，每步更新一次，成本与长度无关，但压缩会丢信息。这一课的前半部分，就是在“精确记忆”和“固定状态”之间找更好的折中。</p>
+    <p><strong>稠密模型的成本从哪来？</strong>每个 token 都要经过每一个参数：FLOPs/token ≈ 2N。但并不是每个输入都需要全部知识。<strong>混合专家</strong>让每个 token 只激活一小部分参数：总参数量（容量）大，每 token 计算量（成本）小。</p>
+  </div>
+  <p>基础工具箱前面已经讲过：局部 + 全局注意力交替、系统工程优化。如果想要更激进、可能更大的收益呢？</p>
+</section>
+
+<section id="linear">
+  <h2><span class="num">02</span>线性注意力</h2>
+  <h3 id="assoc">一个“很傻但很重要”的变换</h3>
+  <p>设 Q, K ∈ ℝ^{n×d_k}，V ∈ ℝ^{n×d_v}，注意力为 <code>ρ(QKᵀ)V</code>。平方复杂度来自 QKᵀ。如果 ρ 是恒等函数（去掉 softmax），利用矩阵乘法的结合律：</p>
+  <div class="formula">(QKᵀ)V = Q(KᵀV)<small>左边 n²d_k + n²d_v，右边 2n·d_k·d_v，对 n 是线性的</small></div>
+  <p>KᵀV 只是一个 d_k × d_v 的小矩阵。Shen et al. (2018)、Katharopoulos et al. (2020)（核函数版本）提出这种思路，它还和“快速权重编程器”（fast weight programmers）有联系。</p>
+  <h3 id="recurrent">循环形式：注意力其实是 RNN</h3>
+  <p>加上因果掩码（位置 t 只看 ≤ t 的 token），把 KᵀV 按时间展开：</p>
+  <div class="formula">S_t = S_{t−1} + k_t v_tᵀ ，  y_t = q_tᵀ S_t<small>S_t 是 d_k × d_v 的状态矩阵</small></div>
+  <p>这就是一个 RNN：状态大小固定，每步 O(d_k d_v)，推理时不需要 KV cache。这种<strong>对偶性</strong>让我们两头占便宜：</p>
+  <ul>
+    <li><strong>训练</strong>用并行（平方）形式，所有位置一起算，能用矩阵乘法跑满 GPU；</li>
+    <li><strong>推理</strong>用串行（线性）形式，每步常数成本、常数内存。</li>
+  </ul>
+  <p>若对 S_{t−1} 乘一个固定衰减系数 γ，就得到 RetNet。</p>
+  <div class="note"><span class="label">补充：状态 S 在存什么</span>
+    <p><code>S = Σ k_i v_iᵀ</code> 是一个联想记忆：用 key 查询 value。<code>qᵀS = Σ (q·k_i) v_iᵀ</code>，就是用未归一化的相似度对 value 加权求和。问题在于它只加不减，d_k × d_v 的容量有限，存多了就互相干扰。下面的改进都在解决“怎么忘、怎么改写”。</p>
+  </div>
+  <p><strong>MiniMax M1</strong>（以及 MiniMax-Text-01）采用 7:1 混合：每 7 层线性注意力配 1 层全注意力。效果总体不错，并且在上下文长度上展现出线性扩展。</p>
+
+  <h3 id="mamba2">Mamba-2：加入数据相关的门控</h3>
+  <div class="formula">S_t = γ_t S_{t−1} + k_t v_tᵀ ，  y_t = q_tᵀ S_t + v_tᵀ D ，  γ_t = f(x_t)</div>
+  <p>和线性注意力的区别是衰减系数 γ_t 由当前输入决定：模型可以<strong>选择性地遗忘</strong>。Mamba-2 论文有大量理论论证，但机制上就是“用门控让线性注意力更有表达力”（又一次：门控是好东西）。它仍有对偶性：γ 可以并行算出，再套用并行形式。</p>
+  <p><strong>NVIDIA Nemotron 3</strong> 使用 Mamba 与注意力的混合（大约 3:1），效果和同类模型相当甚至更好。</p>
+
+  <h3 id="gdn">Gated DeltaNet：选择性擦除</h3>
+  <div class="formula">S_t = γ_t (I − β_t k_t k_tᵀ) S_{t−1} + β_t k_t v_tᵀ ，  y_t = q_tᵀ S_t</div>
+  <p>两处新东西：β_t 是“写入强度”门（β = 0 表示这一步什么都不写）；<code>(I − β k kᵀ)</code> 先擦掉状态里当前 key 方向上的旧内容，再写入新 value。</p>
+  <div class="derive">
+    <p><strong>从第一性原理推导 delta rule。</strong>把状态 S 看作一个线性映射，希望它能把 key 映射到对应的 value：<code>Sᵀk_t ≈ v_t</code>。对这个目标的平方误差做一步在线梯度下降：</p>
+    <p style="text-align:center"><code>L(S) = ½‖Sᵀk_t − v_t‖²，  ∇_S L = k_t (k_tᵀS − v_tᵀ)</code></p>
+    <p style="text-align:center"><code>S ← S − β_t k_t (k_tᵀS − v_tᵀ) = (I − β_t k_t k_tᵀ) S + β_t k_t v_tᵀ</code></p>
+    <p>正好是 DeltaNet 的更新（γ_t 再额外加一个整体衰减）。所以 Gated DeltaNet 的每一步是在推理时对“记忆”做一次梯度下降，这就是它和<strong>测试时训练（test-time training）</strong>的联系。朴素线性注意力只会累加，delta rule 则会纠错。</p>
+  </div>
+  <p><strong>Qwen 3.5 / Qwen3-Next</strong> 采用 3:1 的 Gated DeltaNet / 注意力混合，效果合理，推理特性好。</p>
+  <h3 id="hybrid">混合模型的效果</h3>
+  <p>严格控制变量的消融实验不多，但有证据表明：只保留少量全注意力层（较低的混合比例）时 loss 仍然很低。直觉是，线性层负责大部分局部加工，少数全注意力层负责精确检索远处的信息。</p>
+</section>
+
+<section id="dsa">
+  <h2><span class="num">03</span>另一条路：稀疏注意力（DSA）</h2>
+  <p>混合模型之外的另一种选择是保留注意力，但<strong>不再关注所有 token</strong>。DeepSeek Sparse Attention（DeepSeek V3.2、GLM-5 使用）：</p>
+  <ol>
+    <li>一个非常轻量的<strong>索引器（indexer）</strong>为每个 query 给所有历史 token 打分；</li>
+    <li>只选出得分最高的 top-k 个 token，做真正的注意力。</li>
+  </ol>
+  <p>索引器仍是 O(n²)，但它极其便宜（头少、维度低、可以用低精度），而昂贵的主注意力降到 O(nk)。重要的是，DSA 可以在稠密短上下文预训练之后<strong>事后适配</strong>，不需要从头训练。</p>
+</section>
+
+<section id="moe">
+  <h2><span class="num">04</span>混合专家：是什么，为什么流行</h2>
+  <p>MoE 把一个大的前馈网络替换成<strong>很多个</strong>前馈网络（专家）和一个<strong>选择器</strong>（路由器）。每个 token 只被送到少数几个专家。增加专家数量不会增加每 token 的 FLOPs。据传 GPT-4 就是 MoE。</p>
+  <figure class="fig">
+    <svg viewBox="0 0 560 200" width="560" role="img" aria-label="MoE 层示意：路由器为每个 token 选择 top-2 专家">
+      <rect class="f-surf2 s-ink" x="20" y="80" width="70" height="36" rx="6"/>
+      <text x="55" y="103" text-anchor="middle" class="t-ink">token x</text>
+      <rect class="f-amb s-ink" x="130" y="80" width="80" height="36" rx="6"/>
+      <text x="170" y="103" text-anchor="middle" class="t-ink">路由器</text>
+      <line class="s-ink" x1="90" y1="98" x2="130" y2="98" stroke-width="1.5"/>
+      <g class="s-line" stroke-width="1.5" fill="none">
+        <path d="M210 98 L270 30"/><path d="M210 98 L270 130"/><path d="M210 98 L270 170"/>
+      </g>
+      <g class="s-acc" stroke-width="2.5" fill="none"><path d="M210 98 L270 70"/><path d="M210 98 L270 100"/></g>
+      <rect class="f-surf s-line" x="270" y="16" width="110" height="26" rx="5"/><text x="325" y="34" text-anchor="middle">专家 1</text>
+      <rect class="f-chipa s-acc" x="270" y="56" width="110" height="26" rx="5"/><text x="325" y="74" text-anchor="middle" class="t-ink">专家 2 · g=0.6</text>
+      <rect class="f-chipa s-acc" x="270" y="88" width="110" height="26" rx="5"/><text x="325" y="106" text-anchor="middle" class="t-ink">专家 3 · g=0.4</text>
+      <rect class="f-surf s-line" x="270" y="118" width="110" height="26" rx="5"/><text x="325" y="136" text-anchor="middle">专家 4</text>
+      <text x="325" y="162" text-anchor="middle">…</text>
+      <rect class="f-surf s-line" x="270" y="168" width="110" height="26" rx="5"/><text x="325" y="186" text-anchor="middle">专家 N</text>
+      <g class="s-acc" stroke-width="2" fill="none"><path d="M380 69 L440 95"/><path d="M380 101 L440 99"/></g>
+      <circle class="f-surf s-acc" cx="450" cy="98" r="10"/><text x="450" y="102" text-anchor="middle" class="t-ink">Σ</text>
+      <line class="s-ink" x1="460" y1="98" x2="500" y2="98" stroke-width="1.5"/>
+      <text x="505" y="102" class="t-ink">输出</text>
+    </svg>
+    <figcaption>top-2 路由：路由器给每个专家打分，只激活得分最高的两个，输出是它们的加权和。其余专家对这个 token 不做任何计算。</figcaption>
+  </figure>
+  <h3 id="why-moe">为什么 MoE 越来越流行</h3>
+  <ul>
+    <li><strong>同样的 FLOPs，参数越多效果越好</strong>（Fedus et al., 2022：专家数越多，loss 越低）。</li>
+    <li><strong>训练更快</strong>：达到同样 loss 所需的计算更少（OLMoE）。</li>
+    <li><strong>和稠密模型相比很有竞争力</strong>：目前最强的开放模型大多是 MoE，推理也快。</li>
+    <li><strong>容易并行到多设备</strong>：每个专家可以放在不同的 GPU 上（专家并行）。</li>
+  </ul>
+  <p>Qwen、DeepSeek 等中国团队很早就在小规模上做了大量 MoE 工作和消融实验，结果普遍正面。</p>
+  <h3 id="why-not">为什么 MoE 以前没那么流行</h3>
+  <ul>
+    <li>基础设施复杂，优势主要体现在多节点场景；</li>
+    <li>训练目标有些启发式，有时不稳定。</li>
+  </ul>
+  <p>通常是把 MLP 换成 MoE 层；把注意力头做成专家的（ModuleFormer、JetMoE）较少见。变化点主要在三处：路由函数、专家大小、训练目标。</p>
+</section>
+
+<section id="routing">
+  <h2><span class="num">05</span>路由</h2>
+  <p>大多数路由算法归结为“选 top-k”。三种思路：token 选专家、专家选 token、通过全局优化分配。几乎所有 MoE 都用<strong>token 选专家的 top-k</strong>。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>Top-k</td><td>绝大多数 MoE。Switch Transformer k=1；GShard、Grok、Mixtral k=2；Qwen、DBRX k=4；DeepSeek k=7 左右</td></tr>
+        <tr><td>哈希</td><td>按 token 哈希固定分配，常用作基线</td></tr>
+        <tr><td>强化学习</td><td>最早的工作（Bengio 2013）用过，现在不常见</td></tr>
+        <tr><td>线性分配</td><td>把路由当成匹配问题求解（Clark 2022）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="topk">Top-k 路由的细节</h3>
+  <div class="derive">
+    <p>对 token 的隐状态 u_t，每个专家 i 有一个向量 e_i：</p>
+    <p style="text-align:center"><code>s_{i,t} = softmax_i(u_tᵀ e_i)，  g_{i,t} = s_{i,t} 若 s_{i,t} ∈ TopK，否则 0</code></p>
+    <p style="text-align:center"><code>h_t = u_t + Σ_i g_{i,t} · FFN_i(u_t)</code></p>
+  </div>
+  <p>门控其实就是一个逻辑回归打分器。DeepSeek V1/V2、Grok、Qwen 在 top-k <em>之前</em>做 softmax；Mixtral、DBRX、DeepSeek V3 在 top-k <em>之后</em>对选中的专家重新 softmax（V3 用 sigmoid 打分）。</p>
+  <h3 id="finegrained">细粒度专家与共享专家</h3>
+  <p>DeepSeek、Qwen 等的改进（最早来自 DeepSpeed-MoE）：</p>
+  <ul>
+    <li><strong>细粒度专家</strong>：把每个专家切小（例如 1/4 大小），数量翻 4 倍，激活数也翻 4 倍。总计算不变，但组合方式多得多，专家可以更专精。</li>
+    <li><strong>共享专家</strong>：少数专家对所有 token 始终激活，负责通用知识，让路由专家专注于差异化的部分。</li>
+  </ul>
+  <p>DeepSeek 的消融显示更多专家、共享专家都有帮助；OLMoE 的消融显示细粒度专家有收益，共享专家没有。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">路由专家</th><th class="num">激活</th><th class="num">共享</th><th class="num">细粒度比例</th></tr></thead>
+      <tbody>
+        <tr><td>GShard</td><td class="num">2048</td><td class="num">2</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>Switch Transformer</td><td class="num">64</td><td class="num">1</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>ST-MoE</td><td class="num">64</td><td class="num">2</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>Mixtral</td><td class="num">8</td><td class="num">2</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>DBRX</td><td class="num">16</td><td class="num">4</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>Grok</td><td class="num">8</td><td class="num">2</td><td class="num">0</td><td class="num"></td></tr>
+        <tr><td>DeepSeek V1</td><td class="num">64</td><td class="num">6</td><td class="num">2</td><td class="num">1/4</td></tr>
+        <tr><td>Qwen 1.5</td><td class="num">60</td><td class="num">4</td><td class="num">4</td><td class="num">1/8</td></tr>
+        <tr><td>DeepSeek V3</td><td class="num">256</td><td class="num">8</td><td class="num">1</td><td class="num">1/14</td></tr>
+        <tr><td>OLMoE</td><td class="num">64</td><td class="num">8</td><td class="num">0</td><td class="num">1/8</td></tr>
+        <tr><td>MiniMax</td><td class="num">32</td><td class="num">2</td><td class="num">0</td><td class="num">~1/4</td></tr>
+        <tr><td>Llama 4 Maverick</td><td class="num">128</td><td class="num">1</td><td class="num">1</td><td class="num">1/2</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="train">
+  <h2><span class="num">06</span>怎么训练 MoE</h2>
+  <p>核心矛盾：训练时要稀疏才能高效，但离散的门控决策<strong>不可微</strong>。三种办法：</p>
+  <ol>
+    <li><strong>强化学习</strong>优化门控策略：REINFORCE 能用（Clark et al., 2020），但没有明显更好，梯度方差大、复杂，所以很少用。它是“正确”的解法，但不实用。</li>
+    <li><strong>随机扰动</strong>：Shazeer et al. (2017) 在路由打分上加高斯噪声，专家会更鲁棒，softmax 让模型学会给 k 个专家排序。Fedus et al. (2022) 用乘性均匀抖动，后来 Zoph et al. (2022) 又去掉了。</li>
+    <li><strong>启发式均衡损失</strong>：实际上大家都用这个。</li>
+  </ol>
+  <h3 id="balance">负载均衡损失</h3>
+  <p>系统效率要求专家被均匀使用：一个专家过载，整批都要等它；一个专家没人用，就是浪费参数。Switch Transformer 的辅助损失：</p>
+  <div class="formula">loss_aux = α · N · Σᵢ fᵢ · Pᵢ<small>fᵢ = 分到专家 i 的 token 比例；Pᵢ = 路由器给专家 i 的平均概率；N = 专家数</small></div>
+  <div class="derive">
+    <p>fᵢ 来自 argmax，不可微；Pᵢ = (1/T) Σₓ pᵢ(x) 可微。对某个 token 的 pᵢ(x) 求导：</p>
+    <p style="text-align:center"><code>∂loss/∂pᵢ(x) = (αN/T) · fᵢ = (αN/T²) Σₓ 1[argmax p(x) = i]</code></p>
+    <p>专家 i 被用得越多（fᵢ 越大），就越强烈地压低路由器给它的概率。当所有 fᵢ = Pᵢ = 1/N 时，损失取得最小值 α。</p>
+  </div>
+  <p>DeepSeek V1/V2 同时用了专家级均衡（同上）和设备级均衡（按设备聚合 f 和 P），V2 还加了通信均衡损失（进出都要平衡）。</p>
+  <h3 id="auxfree">DeepSeek V3：“无辅助损失”的均衡</h3>
+  <p>给每个专家一个偏置 bᵢ，只在<strong>选 top-k 时</strong>加到打分上（不影响门控权重）。每步之后在线调整：专家过载就减小 bᵢ，负载不足就增大 bᵢ。这样不需要往损失里加一项去干扰主目标。不过 V3 其实还保留了一个很小的序列级辅助损失，所以并不完全“无辅助损失”。去掉均衡损失会怎样？专家使用会严重失衡，少数专家吃掉大部分 token。</p>
+</section>
+
+<section id="moe-systems">
+  <h2><span class="num">07</span>MoE 的系统问题与训练难题</h2>
+  <h3 id="ep">并行与通信</h3>
+  <p>MoE 很适合并行：每个专家的 FFN 可以放进一个设备，这就带来了<strong>专家并行</strong>。代价是路由之后的 all-to-all 通信，以及每个专家收到的 token 数不固定。MegaBlocks 等库用块稀疏矩阵乘法处理不均匀的负载，很多开放 MoE 都用它。Nemotron 3 的新想法：先把激活值降维再发送，以减少通信量。</p>
+  <h3 id="stochastic">MoE 的额外随机性</h3>
+  <p>为什么 MoE 推理会有额外的随机性？每个专家有容量上限，超出的 token 会被丢弃（token dropping）。而容量是按<strong>整个 batch</strong> 计算的，所以<strong>别人的请求可能挤掉你的 token</strong>，同一个输入在不同 batch 里结果不同。</p>
+  <h3 id="moe-stab">稳定性</h3>
+  <p>路由器的 softmax 很容易出数值问题。解决办法：路由器单独用 fp32 计算，有时再对路由 logits 加 z-loss（Zoph et al., 2022）。去掉 z-loss 会出现 loss 尖峰。</p>
+  <h3 id="ft">微调</h3>
+  <p>稀疏 MoE 在小的微调数据上容易过拟合。Zoph 的办法是只微调非 MoE 的 MLP；DeepSeek 的办法是用大量数据（140 万条 SFT）。</p>
+  <h3 id="upcycle">Upcycling：用稠密模型初始化 MoE</h3>
+  <p>把预训练好的稠密模型的 MLP 复制 N 份作为专家初始值，再继续训练。</p>
+  <ul>
+    <li>MiniCPM：8 个专家、top-2、约 4B 激活参数，用约 520B token 训练后比原模型有提升。</li>
+    <li>Qwen MoE：从 Qwen 1.8B 初始化，60 个专家 + 4 个共享专家、top-4，结构类似 DeepSeekMoE，是最早确认成功的 upcycling 之一。</li>
+  </ul>
+</section>
+
+<section id="deepseek">
+  <h2><span class="num">08</span>案例：DeepSeek V1 → V2 → V3</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>版本</th><th>总参数 / 激活参数</th><th>专家配置</th><th>新东西</th></tr></thead>
+      <tbody>
+        <tr><td>V1</td><td>16B / 2.8B</td><td>2 共享 + 64 细粒度（1/4 大小）</td><td>标准 top-k；专家级 + 设备级辅助损失</td></tr>
+        <tr><td>V2</td><td>236B / 21B</td><td>2 共享 + 160 细粒度，激活 6</td><td>通信均衡损失；top-M 设备路由（先限制 token 只去 M 个设备）</td></tr>
+        <tr><td>V3</td><td>671B / 37B</td><td>1 共享 + 256 细粒度，激活 8</td><td>sigmoid 打分 + top-k 后归一化 + top-M；无辅助损失均衡 + 序列级辅助损失</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>V3 每个 token 只用到约 5.5% 的参数（37/671）。</p>
+  <h3 id="mla">MLA：多头潜在注意力</h3>
+  <p>基本想法：把 Q、K、V 都表示成一个<strong>低维潜在向量</strong>的函数。</p>
+  <div class="derive">
+    <p><code>c_t^{KV} = h_t W^{DKV}</code>（压缩到 d_c 维），然后 <code>K = c_t^{KV} W^{UK}</code>，<code>V = c_t^{KV} W^{UV}</code>。</p>
+    <p><strong>好处</strong>：KV cache 只需存 c_t^{KV}。更妙的是，计算注意力分数时</p>
+    <p style="text-align:center"><code>⟨h W^Q, c W^{UK}⟩ = ⟨h W^Q (W^{UK})ᵀ, c⟩</code></p>
+    <p>W^{UK} 可以合并进 Q 的投影，推理时根本不用把 K 还原出来。（训练时它们也压缩 Q，用于省激活内存。）</p>
+    <p><strong>麻烦</strong>：RoPE 会破坏这种合并。加了旋转后变成 <code>h W^Q R_q R_kᵀ W^{UK} c</code>，R 依赖位置，夹在两个矩阵中间，无法预先合并。</p>
+    <p><strong>解法</strong>：额外保留少量不压缩的“解耦” key 维度专门承载 RoPE。</p>
+  </div>
+  <div class="note"><span class="label">补充：MLA 省了多少</span>
+    <p>DeepSeek V2/V3 中 d_c = 512，解耦 RoPE key 为 64 维，每 token 每层只缓存 576 个数。同样 128 个头、头维度 128 的标准多头注意力要缓存 2 × 128 × 128 = 32768 个数，MLA 小了约 57 倍，而论文报告效果不降反升。</p>
+  </div>
+  <h3 id="mtp">MTP：多 token 预测</h3>
+  <p>在主模型之后接一个小型轻量模块，额外预测更远的 token（思路类似 EAGLE 的投机解码草稿头）。它提供更密的训练信号，推理时也可以用来做投机解码。DeepSeek V3 实际只多预测了 1 个 token。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">09</span>本课要点</h2>
+  <ul>
+    <li>去掉 softmax 后，线性注意力利用结合律把 O(n²) 变成 O(n)，并且等价于一个状态固定的 RNN：训练用并行形式，推理用循环形式。</li>
+    <li>Mamba-2 加数据相关的遗忘门；Gated DeltaNet 进一步做“选择性擦除”，本质是对记忆做在线梯度下降。</li>
+    <li>当前主流做法是混合：3:1 到 7:1 的线性层配少量全注意力层；或者用 DSA 这类稀疏注意力。</li>
+    <li>MoE 利用稀疏性：并非每个输入都需要整个模型。增加专家不增加每 token 的 FLOPs。</li>
+    <li>离散路由难以优化，但 top-k 加负载均衡这种启发式方法效果很好。</li>
+    <li>大量实证表明 MoE 有效且划算：细粒度专家、共享专家、无辅助损失均衡、MLA 是 DeepSeek 系列的关键设计。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">10</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>n = 32768、d_k = d_v = 128 时，普通注意力和线性注意力的计算量相差多少倍？</summary><div>
+    <p>普通：n²(d_k + d_v) = 32768² × 256 ≈ 2.7×10¹¹；线性：2n·d_k·d_v = 2 × 32768 × 128² ≈ 1.1×10⁹。约 256 倍，恰好是 n / d。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>推导：delta rule 是哪个目标函数的一步梯度下降？</summary><div>
+    <p>目标是 <code>½‖Sᵀk_t − v_t‖²</code>，让记忆 S 把当前 key 映射到当前 value。梯度 <code>k_t(k_tᵀS − v_tᵀ)</code>，步长 β_t，得到 <code>(I − β_t k_t k_tᵀ)S + β_t k_t v_tᵀ</code>。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>DeepSeek V3 每个 token 前向大约多少 FLOPs？和同样总参数量的稠密模型相比呢？</summary><div>
+    <p>约 2 × 37B ≈ 74 GFLOPs/token（忽略注意力分数部分）。671B 稠密模型约 1342 GFLOPs/token，是 MoE 的 18 倍。但 MoE 的全部 671B 参数仍要占显存。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>为什么需要负载均衡？不做会怎样？</summary><div>
+    <p>路由容易“富者更富”：被选中多的专家训练得更好，于是更常被选中，最后少数专家处理大部分 token。结果是参数浪费（其他专家没学到东西），并且系统上过载的专家成为瓶颈，超出容量的 token 被丢弃。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>为什么 RoPE 和 MLA 的“吸收”技巧冲突？DeepSeek 怎么解决？</summary><div>
+    <p>吸收技巧依赖 <code>W^Q (W^{UK})ᵀ</code> 可以预先相乘；加入 RoPE 后，中间多了依赖位置的旋转矩阵，不能与位置无关的权重预先合并。DeepSeek 让大部分维度不加 RoPE（可吸收），另加少量单独的维度承载 RoPE，并把这部分 key 直接缓存。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>为什么同一个 prompt 在 MoE 服务上可能每次输出不同（即使温度为 0）？</summary><div>
+    <p>专家容量是按整个 batch 计算的。和你一起被批处理的其他请求会影响每个专家的负载，从而决定你的某些 token 是否被丢弃或改路由，所以结果依赖于 batch 里的其他请求。</p>
+  </div></details>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_04.pdf（Tatsu Hashimoto 主讲） 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_03.html">← 第3课 架构与超参数</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+

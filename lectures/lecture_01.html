@@ -1,0 +1,1188 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第1课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_02.html">第2课 资源核算 →</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 1</div>
+  <h1>从零构建语言模型：课程概览与分词（Tokenization）</h1>
+  <p class="lede">第一课分成两半。前半部分讲这门课为什么存在、LLM 的发展脉络、课程的五大模块；后半部分进入第一个技术单元：把文本变成整数序列的 tokenizer，并亲手实现 BPE。</p>
+  <div class="meta"><span><b>对应源码</b> lecture_01.py</span><span><b>对应作业</b> Assignment 1 (basics)</span><span><b>下一课</b> 资源核算</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#why">1. 为什么要开这门课</a></li>
+<li><a href="#history">2. 语言模型发展脉络</a></li>
+<li><a href="#open">3. 开放模型格局</a></li>
+<li><a href="#logistics">4. 课程安排</a></li>
+<li><a href="#syllabus">5. 课程五大模块</a><ol>
+<li><a href="#basics">5.1 Basics：训练一个基础语言模型</a></li>
+<li><a href="#systems">5.2 Systems：把硬件榨干</a></li>
+<li><a href="#scaling">5.3 Scaling laws：用小实验预测大模型</a></li>
+<li><a href="#data">5.4 Data：模型该具备什么能力？</a></li>
+<li><a href="#alignment">5.5 Alignment：从弱监督中继续提升</a></li>
+</ol></li>
+<li><a href="#efficiency">6. 贯穿全课的主线：效率</a></li>
+<li><a href="#tok">7. Tokenization 详解</a><ol>
+<li><a href="#tok-intro">7.1 Tokenizer 的接口与压缩率</a></li>
+<li><a href="#tok-char">7.2 方案一：字符级 tokenizer</a></li>
+<li><a href="#tok-byte">7.3 方案二：字节级 tokenizer</a></li>
+<li><a href="#tok-word">7.4 方案三：词级 tokenizer</a></li>
+<li><a href="#tok-bpe">7.5 方案四：BPE（Byte Pair Encoding）</a></li>
+<li><a href="#playground">7.6 BPE 演练场</a></li>
+</ol></li>
+<li><a href="#summary">8. 本课要点</a></li>
+<li><a href="#quiz">9. 自测题</a></li>
+<li><a href="#links">10. 延伸阅读</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="why">
+  <h2><span class="num">01</span>为什么要开这门课</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>语言模型是什么？</strong>一个在 token 序列上的概率分布。按链式法则分解：<code>p(x₁…xₙ) = ∏ p(xᵢ | x&lt;ᵢ)</code>，于是“建模语言”就变成“给定前文预测下一个 token”，训练目标就是最小化负对数似然（交叉熵）。</p>
+    <p><strong>约束是什么？</strong>三种稀缺资源：计算（FLOPs）、内存与带宽（字节）、数据（token）。这门课的所有内容都是一个优化问题：在这三种约束下，把模型效果做到最好。</p>
+    <p><strong>分词为什么重要？</strong>模型的计算量随序列长度增长（注意力是平方增长），而词表大小决定 embedding 和输出 softmax 的规模，也决定每个 token 平均能见到多少训练样本。切得越细，序列越长；切得越粗，词表越大越稀疏。分词就是在这两者之间折中，BPE 用数据统计来做这个折中。</p>
+  </div>
+
+  <p>这是 CS336 的第三次开课（前两次是 2024、2025 春季）。和去年相比，“从零构建”的理念不变，内容上更注重<strong>单位时间收益高</strong>的概念（不要只见树木不见森林），并加入了更多现代 LM 的组成部分：混合专家（MoE）、长上下文、智能体（agents）。</p>
+
+  <h3>问题：研究者正在和底层技术“脱节”</h3>
+  <ul>
+    <li><strong>2016 年</strong>：研究者自己实现、自己训练模型。</li>
+    <li><strong>2018 年</strong>：研究者下载预训练模型（如 BERT）再做微调。</li>
+    <li><strong>今天</strong>：研究者调用 API 给闭源模型（GPT / Claude / Gemini）写 prompt。</li>
+  </ul>
+  <p>抽象层级上升确实提高了生产力。但和编程语言、操作系统这类成熟抽象不同，<strong>LLM 的抽象是“漏”的</strong>：模型行为会受到分词、数据、训练细节的影响，调用者不理解下层就很难解释上层的现象。而且很多基础研究本来就需要把整个技术栈拆开来改。</p>
+  <div class="key"><span class="label">课程理念</span>要做基础研究，就需要完整理解这门技术。本课的方法是<strong>通过亲手构建来理解（understanding via building）</strong>。</div>
+
+  <h3>但有个现实问题：语言模型已经“工业化”</h3>
+  <ul>
+    <li>2023 年，GPT-4 据称训练花费约 1 亿美元。</li>
+    <li>2025 年，xAI 为训练 Grok 搭建了 23 万张 GPU 的集群。</li>
+    <li>前沿模型的构建细节不公开。GPT-4 技术报告明确写了：出于竞争和安全考虑，不披露架构、模型大小、硬件、训练计算量、数据集构建和训练方法。</li>
+  </ul>
+  <p>我们没法训练前沿模型，只能做小模型（&lt;1B 参数）。问题是，<strong>小模型不一定能代表大模型</strong>。讲义给了两个例子：</p>
+  <ol>
+    <li><strong>FLOPs 在注意力和 MLP 之间的占比随规模变化</strong>。小模型里注意力占比较大，模型变大后，MLP 的计算量占绝对主导。所以在小模型上优化注意力得到的结论，到大模型上可能不再重要。</li>
+    <li><strong>涌现能力（emergence）</strong>。某些任务的准确率在规模较小时接近随机，过了某个计算量阈值后突然上升（Wei et al., 2022）。只看小模型，你根本观察不到这些能力。</li>
+  </ol>
+
+  <h3>那这门课学到的东西，有哪些能迁移到前沿模型？</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>知识类型</th><th>含义</th><th>能否迁移</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Mechanics（机制）</strong></td><td>东西是怎么工作的：Transformer 是什么、模型并行怎么做</td><td>能教，能迁移</td></tr>
+        <tr><td><strong>Mindset（思维方式）</strong></td><td>把硬件性能榨干、认真对待规模化（scaling）</td><td>能教，能迁移</td></tr>
+        <tr><td><strong>Intuitions（直觉）</strong></td><td>哪些数据和建模决策能带来好效果</td><td>只能部分教，不一定跨规模迁移</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>关于“直觉”，讲义举了 Noam Shazeer 提出 SwiGLU 的论文（<em>GLU Variants Improve Transformer</em>, 2020）。论文结尾坦白说：这些结构为什么有效，他们无法解释，只能“归功于神的仁慈（divine benevolence）”。很多设计决策目前就是实验结果，没有理论依据。</p>
+
+  <h3>苦涩的教训（The Bitter Lesson）的正确解读</h3>
+  <ul>
+    <li><strong>错误解读</strong>：只有规模重要，算法不重要。</li>
+    <li><strong>正确解读</strong>：<strong>能够随规模扩展的算法</strong>才重要。</li>
+  </ul>
+  <div class="formula">accuracy = efficiency × resources<small>模型效果 = 效率 × 资源</small></div>
+  <p>规模越大，效率越重要，因为浪费不起。Hernandez &amp; Brown (2020) 的研究显示，2012 到 2019 年间，ImageNet 上达到同等精度所需的计算量因算法进步降低了 44 倍。</p>
+  <div class="key"><span class="label">整门课的框架</span>给定计算量和数据预算，能训练出的最好模型是什么？换句话说：<strong>最大化效率</strong>。</div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section id="history">
+  <h2><span class="num">02</span>语言模型发展脉络</h2>
+  <ol class="timeline">
+    <li><div class="era">2010 年代以前<br>前神经网络时代</div><div class="body">
+      <ul>
+        <li>Shannon (1950)：用语言模型估计英语的熵。</li>
+        <li>N-gram 语言模型：用于机器翻译、语音识别（Brants et al., 2007）。</li>
+      </ul></div></li>
+    <li><div class="era">2010 年代<br>神经网络组件</div><div class="body">
+      <ul>
+        <li>LSTM (1997)；第一个神经语言模型（Bengio, 2003）</li>
+        <li>Seq2seq (2014)；Adam 优化器 (2014)</li>
+        <li>注意力机制 (Bahdanau, 2015)；Transformer (2017)，最初都是为机器翻译提出的</li>
+        <li>混合专家 MoE (2017)；模型并行：GPipe (2018)、ZeRO (2019)、Megatron-LM (2019)</li>
+      </ul></div></li>
+    <li><div class="era">2010 年代末<br>早期基础模型</div><div class="body">
+      <ul>
+        <li>ELMo：LSTM 预训练，微调后提升下游任务</li>
+        <li>BERT：Transformer 预训练 + 微调</li>
+        <li>T5 (11B)：把一切任务统一成 text-to-text</li>
+      </ul></div></li>
+    <li><div class="era">2019–2022<br>拥抱规模</div><div class="body">
+      <ul>
+        <li>GPT-2 (1.5B)：文本流畅，出现 zero-shot 的迹象</li>
+        <li>Kaplan scaling laws (2020)：让规模化变得可预测</li>
+        <li>GPT-3 (175B)：上下文学习（in-context learning）</li>
+        <li>PaLM (540B)：规模巨大，但训练不足（undertrained）</li>
+        <li>Chinchilla (70B)：计算最优的 scaling law</li>
+      </ul></div></li>
+  </ol>
+
+  <h3>“语言模型”这个词的含义也在变</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>时间</th><th>代表</th><th>LM 是……</th></tr></thead>
+      <tbody>
+        <tr><td class="num">2018</td><td>BERT</td><td>拿来<strong>微调</strong>的东西</td></tr>
+        <tr><td class="num">2020</td><td>GPT-3</td><td>拿来写 <strong>prompt</strong> 的东西</td></tr>
+        <tr><td class="num">2022</td><td>ChatGPT</td><td>可以<strong>对话</strong>的东西</td></tr>
+        <tr><td class="num">2026</td><td>Agents</td><td>可以<strong>自主行动</strong>的东西</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>基本原理没变（注意力、kernel、优化），但需求变了：上下文更长，推理效率更加重要。</p>
+</section>
+
+<!-- ================= 3 ================= -->
+<section id="open">
+  <h2><span class="num">03</span>开放模型格局</h2>
+  <p>讲义把开放模型分成三个层次，注意区分“开放权重”和“开源”：</p>
+
+  <h4>早期尝试（复现 GPT-3）</h4>
+  <ul>
+    <li>EleutherAI：开放数据集 The Pile 和模型 GPT-J</li>
+    <li>Meta OPT (175B)：GPT-3 复现，遇到大量硬件问题</li>
+    <li>BigScience BLOOM (176B)：重点在数据来源</li>
+  </ul>
+
+  <h4>可信的开放权重模型（权重 + 论文）</h4>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>机构</th><th>模型系列</th></tr></thead>
+      <tbody>
+        <tr><td>Meta</td><td>Llama 1 / 2 / 3</td></tr>
+        <tr><td>Mistral</td><td>Mistral 7B、Mixtral</td></tr>
+        <tr><td>DeepSeek</td><td>67B、V2、V3、R1、V3.2</td></tr>
+        <tr><td>阿里</td><td>Qwen 2.5、Qwen 3</td></tr>
+        <tr><td>月之暗面</td><td>Kimi 1.5、Kimi K2.5</td></tr>
+        <tr><td>智谱 Z.ai</td><td>GLM-4.5、GLM-5</td></tr>
+        <tr><td>MiniMax</td><td>M2.5</td></tr>
+        <tr><td>小米</td><td>MiMo V2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>这些模型已经在逼近闭源模型（GPT、Claude、Gemini 等）。</p>
+
+  <h4>完全开源模型（权重 + 论文 + 代码 + 数据）</h4>
+  <ul>
+    <li>AI2 的 OLMo 系列（OLMo、OLMo 2、OLMo 3）</li>
+    <li>NVIDIA 的 Nemotron 系列</li>
+    <li>Marin（开放开发过程，8B、32B）</li>
+  </ul>
+  <p>开放对信任和创新都很重要。这门课能讲得这么细，靠的正是开放模型公开的这些想法和细节。</p>
+</section>
+
+<!-- ================= 4 ================= -->
+<section id="logistics">
+  <h2><span class="num">04</span>课程安排</h2>
+  <p>所有信息都在<a href="https://stanford-cs336.github.io/spring2026/">课程网站</a>上。这是一门 5 学分的课，工作量很大。一条 2024 年的课程评价：</p>
+  <blockquote>第一个作业的工作量，大约等于 CS224n 全部 5 个作业加期末项目。这还只是第一个作业。</blockquote>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>适合你，如果……</th><th>不适合你，如果……</th></tr></thead>
+      <tbody>
+        <tr><td>你有强迫症般的需求，想弄懂东西是怎么工作的</td><td>你这学期其实想推进自己的研究（去和导师聊聊）</td></tr>
+        <tr><td>你想锻炼研究工程（research engineering）能力</td><td>你想了解最热门的新技术，如多模态、RAG（去上 seminar 课）</td></tr>
+        <tr><td></td><td>你只想在自己的应用领域拿到好结果（直接 prompt 或微调现成模型就行）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>作业</h3>
+  <ul>
+    <li>5 个作业：basics、systems、scaling laws、data、alignment。</li>
+    <li><strong>不提供脚手架代码</strong>，但提供单元测试和 adapter 接口，用来检查正确性。</li>
+    <li>先在本地实现并测试正确性，再到集群上跑基准（精度和速度）。</li>
+    <li>部分作业有排行榜（在给定训练预算下最小化困惑度）。</li>
+  </ul>
+
+  <h3>AI 使用政策</h3>
+  <ul>
+    <li>编程智能体能直接做完所有作业，但那样你什么也学不到。</li>
+    <li>AI 用来答疑和辅导非常有用。</li>
+    <li>必须使用课程提供的 <code>AGENTS.md</code>，它会让 AI 以教学为导向来回应。</li>
+  </ul>
+
+  <h3>算力与自学</h3>
+  <ul>
+    <li>算力由 Modal 赞助，课程有专门的使用指南。</li>
+    <li>讲义和作业全部公开，可以自学跟进；课程录像由 Stanford CGOE 录制。2025 年春季的录像在 YouTube 上。</li>
+  </ul>
+</section>
+
+<!-- ================= 5 ================= -->
+<section id="syllabus">
+  <h2><span class="num">05</span>课程五大模块</h2>
+  <p>每个模块对应一个作业。</p>
+  <div class="modules">
+    <a class="module" href="#basics"><span class="a">A1</span><b>Basics</b><span>分词、模型架构、训练</span></a>
+    <a class="module" href="#systems"><span class="a">A2</span><b>Systems</b><span>kernel、并行、推理</span></a>
+    <a class="module" href="#scaling"><span class="a">A3</span><b>Scaling laws</b><span>用小实验预测大模型</span></a>
+    <a class="module" href="#data"><span class="a">A4</span><b>Data</b><span>评测、清洗、过滤、去重、配比</span></a>
+    <a class="module" href="#alignment"><span class="a">A5</span><b>Alignment</b><span>RLHF、RL 算法、RL 系统</span></a>
+  </div>
+
+  <!-- Basics -->
+  <h3 id="basics">5.1 Basics：训练一个基础语言模型</h3>
+  <h4>分词（Tokenization）</h4>
+  <p>模型操作的“原子”是什么？形式上，tokenizer 在原始输入（字节）和整数序列（token）之间相互转换。最常用的是 <strong>BPE（Byte-Pair Encoding）</strong>，直觉是把输入切成频繁出现的片段。从效率角度看，它的好处是：</p>
+  <ul>
+    <li><strong>缩短上下文长度</strong>：约 1000 字节 → 约 250 个 token。</li>
+    <li><strong>自适应计算</strong>：把更多建模能力分配给输入中“有意思”的部分。</li>
+  </ul>
+  <p>理想状态是不需要 tokenizer、直接处理字节的架构（ByT5、MEGABYTE、BLT、T-FREE、H-Net）。它们很有前景，但还没有扩展到前沿规模。</p>
+
+  <h4>模型架构</h4>
+  <p>起点是原始 Transformer（2017），之后的主要改进：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>组件</th><th>演进方向</th></tr></thead>
+      <tbody>
+        <tr><td>激活函数</td><td>ReLU → SwiGLU</td></tr>
+        <tr><td>位置编码</td><td>正弦位置编码 → RoPE</td></tr>
+        <tr><td>归一化</td><td>LayerNorm → RMSNorm；QK norm；pre-norm vs post-norm</td></tr>
+        <tr><td>注意力</td><td>全注意力、稀疏/局部注意力、GQA、MLA</td></tr>
+        <tr><td>循环 / 线性注意力</td><td>Mamba、Gated DeltaNet 等状态空间模型</td></tr>
+        <tr><td>MLP</td><td>稠密 → 混合专家（MoE）</td></tr>
+        <tr><td>形状</td><td>隐藏维度、深度、头数、专家数</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>训练</h4>
+  <ul>
+    <li>损失函数：例如多 token 预测（MTP，DeepSeek-V3 使用）</li>
+    <li>优化器：AdamW、SOAP、Muon</li>
+    <li>初始化尺度：Xavier、muP</li>
+    <li>学习率调度：cosine、WSD（warmup-stable-decay）</li>
+    <li>正则化：dropout、weight decay</li>
+    <li>批大小：临界批大小（critical batch size）</li>
+    <li>MoE 专属：负载均衡（如 DeepSeek 的 aux-loss-free 方法）</li>
+  </ul>
+
+  <div class="src"><span class="label">Assignment 1</span>
+    <ul>
+      <li>实现 BPE tokenizer</li>
+      <li>实现 Transformer、交叉熵损失、AdamW 优化器、训练循环</li>
+      <li>做资源核算（resource accounting）</li>
+      <li>在 TinyStories 和 OpenWebText 上训练</li>
+      <li>排行榜：在 <strong>B200 上 45 分钟</strong>内最小化 OpenWebText 困惑度</li>
+    </ul>
+  </div>
+  <div class="key"><span class="label">核心原则</span>所有设计都是在三者之间权衡：<strong>表达能力</strong>（能表示数据中的复杂依赖）、<strong>稳定性</strong>（参数和梯度范数保持在合适区间）、<strong>效率</strong>（训练和推理在硬件上都跑得快）。</div>
+
+  <!-- Systems -->
+  <h3 id="systems">5.2 Systems：把硬件榨干</h3>
+  <h4>资源核算</h4>
+  <p>讲义里的例子：用 1T token 训练一个 70B 参数的模型，总计算量为</p>
+  <div class="formula">6 × 70×10⁹ × 10¹² = 4.2×10²³ FLOPs</div>
+  <div class="note"><span class="label">补充：6ND 从哪里来</span>
+    <p>训练计算量约为 <code>C ≈ 6ND</code>（N 为参数量，D 为 token 数）。每个 token 在前向传播中，每个参数大约参与 1 次乘法和 1 次加法，即 <strong>2N</strong> FLOPs；反向传播要同时算对激活和对权重的梯度，约为前向的 2 倍，即 <strong>4N</strong>。合计 6N 每 token。下一课会详细推导。</p>
+  </div>
+  <p>模型参数要从显存（HBM）搬到计算单元（SM）。以 B200 为例：bf16 算力约 <strong>2.25 PFLOP/s</strong>，显存带宽约 <strong>8 TB/s</strong>。</p>
+  <ul>
+    <li><strong>Roofline 分析</strong>：判断计算是受算力限制（compute-bound）还是受显存带宽限制（memory-bound）。</li>
+    <li><strong>基准测试和性能剖析</strong>（如 nsight）：看实际运行情况。</li>
+  </ul>
+  <div class="note"><span class="label">补充推导</span>
+    <p>2.25×10¹⁵ ÷ 8×10¹² ≈ <strong>281 FLOPs/字节</strong>。一个操作每读 1 字节数据，要做约 281 次以上浮点运算，才能让 B200 的算力跑满；低于这个“算术强度”，瓶颈就在显存带宽。逐元素操作（加法、激活函数）的算术强度远低于此，所以它们几乎都是 memory-bound。</p>
+  </div>
+
+  <h4>Kernel</h4>
+  <ul>
+    <li>Kernel 是在 GPU 上运行的函数。用 PyTorch 时，每个基本操作都会启动一个标准 kernel。</li>
+    <li>核心原则：<strong>组织计算，最小化数据搬运</strong>。</li>
+    <li>未融合：读 HBM → 算 A → 写 HBM → 读 HBM → 算 B → 写 HBM</li>
+    <li>融合后：读 HBM → 算 A 和 B → 写 HBM</li>
+    <li>策略：算子融合（matmul + 激活）、分块（tiling，FlashAttention 的核心）</li>
+    <li>需要理解的概念：warp divergence、内存合并访问（coalescing）、bank conflict、occupancy、异步批量内存传输</li>
+    <li>工具：CUDA / <strong>Triton</strong> / CUTLASS / ThunderKittens</li>
+  </ul>
+
+  <h4>并行</h4>
+  <ul>
+    <li>如果有 1024 张 GPU？GPU 之间的数据传输更慢，但“最小化数据搬运”的原则不变。</li>
+    <li>使用经典集合通信操作：gather、reduce、all-reduce。</li>
+    <li>把参数、激活、梯度、优化器状态切分（shard）到多张 GPU 上。</li>
+    <li>切分计算的方式：数据并行、张量并行、流水线并行、序列并行、专家并行。</li>
+  </ul>
+
+  <h4>推理</h4>
+  <p>推理不只是用来“用模型”，强化学习、测试时计算（test-time compute）、评测都需要推理。推理分两个阶段：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>阶段</th><th>做什么</th><th>瓶颈</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Prefill</strong></td><td>prompt 的所有 token 已知，可以一次并行处理（和训练类似）</td><td>compute-bound</td></tr>
+        <tr><td><strong>Decode</strong></td><td>一次只能生成一个 token</td><td>memory-bound</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><span class="label">补充：为什么 decode 是 memory-bound</span>
+    <p>每生成一个 token，都要把全部权重从 HBM 读一遍，但只对很少的 token 做计算。以 70B 模型、bf16（约 140 GB 权重）、batch=1 为例：140 GB ÷ 8 TB/s ≈ 17.5 ms/token，也就是单卡理论上限约 57 token/s，而此时算力几乎闲置。增大 batch 能让多个请求分摊同一次权重读取，这就是 continuous batching 的意义。</p>
+  </div>
+  <p>加速 decode 的方法：</p>
+  <ul>
+    <li>用更便宜的模型：剪枝、量化、蒸馏。</li>
+    <li><strong>投机解码（speculative decoding）</strong>：用便宜的“草稿”模型先生成多个 token，再用完整模型并行打分。结果和完整模型的解码<strong>完全一致</strong>。</li>
+    <li>系统优化：融合 kernel、continuous batching。</li>
+  </ul>
+  <div class="src"><span class="label">Assignment 2</span>
+    <ul>
+      <li>用 Triton 实现融合的 RMSNorm kernel</li>
+      <li>实现分布式数据并行（DDP）训练</li>
+      <li>实现优化器状态切分</li>
+      <li>对实现做基准测试和性能剖析</li>
+    </ul>
+    <p>推荐阅读：<a href="https://jax-ml.github.io/scaling-book/">How to Scale Your Model</a>（Google 出品，以 TPU 为主，但概念通用）。</p>
+  </div>
+
+  <!-- Scaling -->
+  <h3 id="scaling">5.3 Scaling laws：用小实验预测大模型</h3>
+  <p>假设你有 10²⁵ FLOPs 的计算预算，该用什么超参数？在目标规模上直接调参太贵了。</p>
+  <div class="key"><span class="label">关键的概念转变</span>不要只考虑单一规模，要设计一个<strong>scaling recipe</strong>：一个从 FLOPs 映射到超参数的“配方”。</div>
+  <ol>
+    <li>在较小规模（例如最多 10²⁴ FLOPs）上跑实验，得到各规模下的 loss。</li>
+    <li>拟合 scaling law，预测该配方在目标规模（例如 10²⁵ FLOPs）下的 loss。</li>
+  </ol>
+  <p>这样你就可以：用小规模实验优化面向大规模的配方；在真正训练之前预测最终 loss。scaling law 不会自动出现，需要精心设计配方，例如用 muP 等参数化方式实现<strong>超参数迁移</strong>。讲义强调：<strong>可预测性至少和最优性一样重要</strong>。</p>
+
+  <h4>模型大一点，还是数据多一点？</h4>
+  <p>给定预算 <code>C = 6ND</code>，是用更大的模型（N），还是训练更多 token（D）？Kaplan (2020) 和 Chinchilla (2022) 的做法：</p>
+  <ul>
+    <li><strong>IsoFLOP 曲线</strong>：对多个小的 FLOPs 预算，分别找出使 loss 最小的 N。</li>
+    <li>对这些最优点拟合 scaling law，外推到大预算。</li>
+  </ul>
+  <div class="formula">D ≈ 20 N<small>Chinchilla 经验法则：70B 模型大约应训练 1.4T token</small></div>
+  <p>注意：这条法则没考虑推理成本。实际部署时更想要小模型，所以现在的模型通常会用远多于 20N 的 token 来训练（“过度训练”）。</p>
+  <p>讲义还展示了 Marin 项目的实时例子：先用小规模实验预先登记（preregister）目标 loss，再训练大模型检验预测是否准确。</p>
+  <div class="src"><span class="label">Assignment 3</span>
+    <ul>
+      <li>课程提供一个“训练 API”（超参数 → loss），基于以往真实训练结果</li>
+      <li>在 FLOPs 预算内提交“训练任务”，收集数据点</li>
+      <li>拟合 scaling law，提交外推的超参数和 loss 预测</li>
+      <li>排行榜：给定 FLOPs 预算下最小化 loss</li>
+    </ul>
+  </div>
+
+  <!-- Data -->
+  <h3 id="data">5.4 Data：模型该具备什么能力？</h3>
+  <p>多语言？擅长对话？能做智能体编程？能力由数据决定。</p>
+  <h4>评测</h4>
+  <ol>
+    <li><strong>对内</strong>：指导模型开发。重要的是跨规模的平滑性和相对表现。</li>
+    <li><strong>对外</strong>：衡量真实使用场景的绝对质量。重要的是生态效度（是否贴近真实使用）。</li>
+  </ol>
+  <p>例子：困惑度（最好用不在互联网上的私有文档，避免数据污染）；高级任务评测如 GPQA、HLE、SWE-Bench、Terminal-Bench。LM 是通用的，所以需要多样的评测集。</p>
+  <h4>数据来源与处理</h4>
+  <p>数据不会从天上掉下来。来源包括爬取的网页、书籍、arXiv 论文、GitHub 代码等。版权数据能否以“合理使用”为由训练仍有争议，有时需要购买授权（如 Google 与 Reddit 的数据协议）。原始数据是 HTML、PDF、目录结构，不是纯文本，需要处理：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>步骤</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>转换</td><td>把 HTML/PDF 转成文本，提取正文</td></tr>
+        <tr><td>过滤</td><td>用分类器保留高质量数据，去除有害内容</td></tr>
+        <tr><td>去重</td><td>节省算力、避免记忆；用 Bloom filter 或 MinHash</td></tr>
+        <tr><td>配比</td><td>每个来源该加权还是降权（RegMix、OLMix）</td></tr>
+        <tr><td>改写 / 合成</td><td>用 LM 改写真实数据，使其更接近下游任务（WRAP）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>数据类型：<strong>预训练数据</strong>（量大、多样）→ <strong>中期训练数据</strong>（高质量，含长上下文）→ <strong>后训练数据</strong>（SFT：对话、带工具调用的智能体轨迹）。</p>
+  <div class="src"><span class="label">Assignment 4</span>
+    <ul>
+      <li>把 Common Crawl 的 HTML 转成文本</li>
+      <li>训练质量分类器和有害内容分类器</li>
+      <li>用 MinHash 去重</li>
+      <li>排行榜：给定 token 预算下最小化困惑度</li>
+    </ul>
+  </div>
+
+  <!-- Alignment -->
+  <h3 id="alignment">5.5 Alignment：从弱监督中继续提升</h3>
+  <p>到这里，模型是用完全监督（预测下一个 token）训练的。模型已经不错之后，可以用<strong>弱监督</strong>进一步改进。为什么用弱监督？因为很多时候<strong>评判比生成容易</strong>。</p>
+  <p>基本模板：</p>
+  <ol>
+    <li>让模型生成回答。</li>
+    <li>用人类、验证器（verifier）或 LM 评审给回答打分。</li>
+    <li>更新模型，让它偏向更好的回答。</li>
+  </ol>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>算法</th><th>要点</th></tr></thead>
+      <tbody>
+        <tr><td>PPO</td><td>来自强化学习，InstructGPT 使用</td></tr>
+        <tr><td>DPO</td><td>针对偏好数据，更简单，不需要显式奖励模型和 RL 循环</td></tr>
+        <tr><td>GRPO</td><td>去掉价值函数（value function），用同组采样的相对得分估计优势</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>挑战：RL 算法不稳定、难调；规模化需要大量新基础设施（异步 rollout 的推理）；需要不断在系统效率和 on-policy 程度之间权衡。</p>
+  <div class="src"><span class="label">Assignment 5</span>实现 DPO 和 GRPO。</div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section id="efficiency">
+  <h2><span class="num">06</span>贯穿全课的主线：效率</h2>
+  <p>资源 = 数据 + 硬件（算力、显存、通信带宽）。问题始终是：给定固定资源，怎样训练出最好的模型？</p>
+  <p>今天我们受<strong>算力</strong>约束，所以各模块的设计决策都在榨干硬件：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模块</th><th>效率体现在哪</th></tr></thead>
+      <tbody>
+        <tr><td>Systems</td><td>显然就是关于效率的</td></tr>
+        <tr><td>Tokenization</td><td>直接处理原始字节很优雅，但在当前架构下计算效率低</td></tr>
+        <tr><td>模型架构</td><td>很多改动为了减少显存或 FLOPs，如共享 KV cache、滑动窗口注意力</td></tr>
+        <tr><td>数据过滤</td><td>不把宝贵的算力浪费在差的或无关的数据上</td></tr>
+        <tr><td>Scaling laws</td><td>用小模型上的少量算力完成超参数调优</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>而未来，我们会变成受<strong>数据</strong>约束……</p>
+</section>
+
+<!-- ================= 7 ================= -->
+<section id="tok">
+  <h2><span class="num">07</span>Tokenization 详解</h2>
+  <p class="muted">这一单元受 Andrej Karpathy 的分词视频启发，推荐一起看。</p>
+
+  <h3 id="tok-intro">7.1 Tokenizer 的接口与压缩率</h3>
+  <p>原始文本通常是 Unicode 字符串，比如 <code>"Hello, 🌍! 你好!"</code>。语言模型在 <strong>token 序列</strong>（整数索引）上定义概率分布。所以需要两个过程：</p>
+  <ul>
+    <li><strong>encode</strong>：字符串 → token 序列</li>
+    <li><strong>decode</strong>：token 序列 → 字符串</li>
+  </ul>
+<pre><span class="k">class</span> Tokenizer(ABC):
+    <span class="c">"""Tokenizer 的抽象接口"""</span>
+    <span class="k">def</span> encode(self, string: str) -&gt; list[int]: ...
+    <span class="k">def</span> decode(self, indices: list[int]) -&gt; str: ...</pre>
+  <p>一个基本要求是<strong>往返一致（round-trip）</strong>：<code>decode(encode(s)) == s</code>。</p>
+
+  <h4>衡量标准：压缩率</h4>
+  <div class="formula">compression ratio = UTF-8 字节数 ÷ token 数</div>
+  <p>压缩率越高，序列越短。这很重要，因为注意力的计算量随序列长度平方增长。提高压缩率的办法是增大<strong>词表</strong>，但词表太大会带来稀疏性：很多 token 很少出现，模型学不好它们的 embedding。</p>
+
+  <h4>观察真实 tokenizer</h4>
+  <p>可以在 <a href="https://tiktokenizer.vercel.app/?encoder=gpt2">tiktokenizer</a> 上体验。几点观察：</p>
+  <ul>
+    <li>单词和它前面的空格属于同一个 token，例如 <code>" world"</code>。</li>
+    <li>同一个词在句首和句中的表示不同，例如 <code>"hello hello"</code> 中两个 hello 对应不同 token。</li>
+    <li>数字会被切成每几位一段。</li>
+  </ul>
+  <p>讲义用 GPT-5 的 tokenizer（tiktoken 的 <code>o200k_base</code>）编码 <code>"Hello, 🌍! 你好!"</code>：</p>
+  <div class="chips">
+    <span class="chip">Hello<i>13225</i></span>
+    <span class="chip">,<i>11</i></span>
+    <span class="chip">␣🌍 (前半)<i>130321</i></span>
+    <span class="chip">🌍 (后半)<i>235</i></span>
+    <span class="chip">!<i>0</i></span>
+    <span class="chip">␣<i>220</i></span>
+    <span class="chip">你好<i>177519</i></span>
+    <span class="chip">!<i>0</i></span>
+  </div>
+  <p>20 个字节变成 8 个 token，压缩率 <strong>2.5</strong>；词表大小 <strong>200,019</strong>。注意 🌍 被拆成了两个 token：一个 token 对应的字节序列不一定是完整的 UTF-8 字符。</p>
+
+  <h3 id="tok-char">7.2 方案一：字符级 tokenizer</h3>
+  <p>每个 Unicode 字符对应一个码点（code point），用 <code>ord</code> / <code>chr</code> 相互转换：<code>ord("a") == 97</code>，<code>ord("🌍") == 127757</code>。</p>
+<pre><span class="k">class</span> CharacterTokenizer(Tokenizer):
+    <span class="k">def</span> encode(self, string): <span class="k">return</span> list(map(ord, string))
+    <span class="k">def</span> decode(self, indices): <span class="k">return</span> <span class="c">""</span>.join(map(chr, indices))</pre>
+  <p>示例字符串编码为 13 个 token：<code>[72, 101, 108, 108, 111, 44, 32, 127757, 33, 32, 20320, 22909, 33]</code>。</p>
+  <ul>
+    <li><strong>问题 1</strong>：词表非常大。Unicode 约有 15 万个字符，仅这个例子就要求词表至少 127,758。</li>
+    <li><strong>问题 2</strong>：很多字符很罕见（比如 🌍），浪费词表空间。</li>
+    <li>压缩率只有 20 ÷ 13 ≈ <strong>1.54</strong>。</li>
+  </ul>
+  <p>结论：词表大、压缩率低，<strong>两头不讨好</strong>。</p>
+
+  <h3 id="tok-byte">7.3 方案二：字节级 tokenizer</h3>
+  <p>先用 UTF-8 把字符串编码成字节序列，每个字节是 0–255 的整数。ASCII 字符占 1 字节，其他字符占多个字节：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>字符</th><th>UTF-8 字节</th><th class="num">字节数</th></tr></thead>
+      <tbody>
+        <tr><td>a</td><td><code>61</code></td><td class="num">1</td></tr>
+        <tr><td>你</td><td><code>E4 BD A0</code></td><td class="num">3</td></tr>
+        <tr><td>🌍</td><td><code>F0 9F 8C 8D</code></td><td class="num">4</td></tr>
+      </tbody>
+    </table>
+  </div>
+<pre><span class="k">class</span> ByteTokenizer(Tokenizer):
+    <span class="k">def</span> encode(self, string): <span class="k">return</span> list(string.encode(<span class="c">"utf-8"</span>))
+    <span class="k">def</span> decode(self, indices): <span class="k">return</span> bytes(indices).decode(<span class="c">"utf-8"</span>)</pre>
+  <ul>
+    <li>优点：词表只有 <strong>256</strong>，小巧，而且不会有未登录字符。</li>
+    <li>缺点：压缩率恰好是 <strong>1</strong>，序列太长。Transformer 的上下文长度有限（注意力是平方复杂度），这不可接受。</li>
+  </ul>
+
+  <h3 id="tok-word">7.4 方案三：词级 tokenizer</h3>
+  <p>这更接近传统 NLP 的做法：用正则把字符串切成词。</p>
+<pre>regex.findall(<span class="c">r"\w+|."</span>, <span class="c">"I'll say supercalifragilisticexpialidocious!"</span>)
+<span class="c"># ['I', "'", 'll', ' ', 'say', ' ', 'supercalifragilisticexpialidocious', '!']</span></pre>
+  <p>然后把每个不同的片段映射成一个整数。这个例子 44 字节 → 8 个 token，压缩率 <strong>5.5</strong>。</p>
+  <ul>
+    <li>优点：每个 token 都有意义（词是人发明的单位），压缩率高。</li>
+    <li>缺点 1：词表大小等于训练数据中不同片段的数量，可能极大。</li>
+    <li>缺点 2：很多词很罕见，模型学不到什么。</li>
+    <li>缺点 3：词表大小不固定。</li>
+    <li>缺点 4：训练时没见过的新词只能映射到特殊的 <code>UNK</code> token，既难看，又会搞乱困惑度的计算。</li>
+  </ul>
+
+  <h4>三种朴素方案对比</h4>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>方案</th><th class="num">词表大小</th><th class="num">压缩率</th><th>主要问题</th></tr></thead>
+      <tbody>
+        <tr><td>字符级</td><td class="num">~150K</td><td class="num">1.54</td><td>词表大且稀疏，压缩率低</td></tr>
+        <tr><td>字节级</td><td class="num">256</td><td class="num">1.00</td><td>序列太长</td></tr>
+        <tr><td>词级</td><td class="num">不固定，巨大</td><td class="num">5.5<span class="tag">*</span></td><td>罕见词、UNK、词表不封闭</td></tr>
+        <tr><td>GPT-5 BPE</td><td class="num">200,019</td><td class="num">2.5</td><td>需要训练</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">* 词级的压缩率来自另一个英文例句，不能和其他行直接比较。其余三行都是 <code>"Hello, 🌍! 你好!"</code>。</p>
+
+  <h3 id="tok-bpe">7.5 方案四：BPE（Byte Pair Encoding）</h3>
+  <p><strong>历史</strong>：BPE 由 Philip Gage 在 1994 年提出，本来是一种数据压缩算法。Sennrich et al. (2016) 把它用于神经机器翻译（之前的论文都用词级分词），后来 GPT-2 也采用了 BPE。</p>
+  <div class="key"><span class="label">核心思想</span>
+    <p>在原始文本上<strong>训练</strong> tokenizer，得到适合这份数据的词表。常见的字节序列用一个 token 表示，罕见的字节序列用多个 token 表示。</p>
+    <p>做法：从“每个字节是一个 token”开始，<strong>反复合并最常见的相邻 token 对</strong>。</p>
+  </div>
+  <p>BPE 同时解决了前面的问题：以字节为基础，不存在 UNK；词表大小由合并次数控制，是固定的；常见片段合并成长 token，压缩率高。</p>
+
+  <h4>训练代码</h4>
+<pre><span class="k">def</span> train_bpe(string: str, num_merges: int) -&gt; BPETokenizerParams:
+    indices = list(map(int, string.encode(<span class="c">"utf-8"</span>)))
+    merges = {}                                   <span class="c"># (index1, index2) -&gt; 新 index</span>
+    vocab = {x: bytes([x]) <span class="k">for</span> x <span class="k">in</span> range(256)}  <span class="c"># index -&gt; bytes</span>
+
+    <span class="k">for</span> i <span class="k">in</span> range(num_merges):
+        counts = count_adjacent_pairs(indices)     <span class="c"># 统计每个相邻 pair 出现次数</span>
+        pair = max(counts, key=counts.get)         <span class="c"># 找最常见的 pair</span>
+        new_index = 256 + i
+        merges[pair] = new_index
+        vocab[new_index] = vocab[pair[0]] + vocab[pair[1]]
+        indices = merge(indices, pair, new_index)  <span class="c"># 把所有该 pair 替换成新 token</span>
+    <span class="k">return</span> BPETokenizerParams(vocab=vocab, merges=merges)
+
+<span class="k">def</span> merge(indices, pair, new_index):
+    new_indices, i = [], 0
+    <span class="k">while</span> i &lt; len(indices):
+        <span class="k">if</span> i + 1 &lt; len(indices) <span class="k">and</span> (indices[i], indices[i+1]) == pair:
+            new_indices.append(new_index); i += 2
+        <span class="k">else</span>:
+            new_indices.append(indices[i]); i += 1
+    <span class="k">return</span> new_indices</pre>
+
+  <h4>逐步演示：在 <code>"the cat in the hat"</code> 上合并 3 次</h4>
+  <div class="step">
+    <div class="step-head"><b>初始</b><span>18 个字节 = 18 个 token</span></div>
+    <div class="chips" id="demo-0"></div>
+  </div>
+  <div class="step">
+    <div class="step-head"><b>第 1 次合并</b><span>(116, 104) 即 "t"+"h" → <code>256 = "th"</code></span><span>出现 2 次</span></div>
+    <div class="chips" id="demo-1"></div>
+  </div>
+  <div class="step">
+    <div class="step-head"><b>第 2 次合并</b><span>(256, 101) 即 "th"+"e" → <code>257 = "the"</code></span><span>出现 2 次</span></div>
+    <div class="chips" id="demo-2"></div>
+  </div>
+  <div class="step">
+    <div class="step-head"><b>第 3 次合并</b><span>(257, 32) 即 "the"+" " → <code>258 = "the "</code></span><span>出现 2 次</span></div>
+    <div class="chips" id="demo-3"></div>
+  </div>
+  <p>最终 18 字节 → 12 个 token，压缩率 <strong>1.5</strong>。</p>
+  <div class="note"><span class="label">注意平局</span>
+    <p>第 1 步时 <code>("t","h")</code>、<code>("h","e")</code>、<code>("e"," ")</code>、<code>("a","t")</code> 都出现 2 次。讲义代码用 Python 的 <code>max</code>，平局时选<strong>最先出现</strong>的 pair。作业 1 对平局规则有明确要求，实现时以作业 PDF 为准，否则结果会和测试对不上。</p>
+  </div>
+
+  <h4>用训练好的 tokenizer 编码新文本</h4>
+<pre><span class="k">def</span> encode(self, string):
+    indices = list(map(int, string.encode(<span class="c">"utf-8"</span>)))
+    <span class="k">for</span> pair, new_index <span class="k">in</span> self.params.merges.items():  <span class="c"># 按训练时的顺序依次应用合并</span>
+        indices = merge(indices, pair, new_index)
+    <span class="k">return</span> indices
+
+<span class="k">def</span> decode(self, indices):
+    <span class="k">return</span> b<span class="c">""</span>.join(self.params.vocab[i] <span class="k">for</span> i <span class="k">in</span> indices).decode(<span class="c">"utf-8"</span>)</pre>
+  <p>用上面 3 条合并规则编码 <code>"the quick brown fox"</code>，只有开头的 <code>"the "</code> 被合并：</p>
+  <div class="chips" id="demo-fox"></div>
+  <p>19 字节 → 16 个 token。合并规则只学自一句话，所以对新文本帮助有限。真实 tokenizer 在海量语料上学几万到几十万条规则。</p>
+  <div class="note"><span class="label">为什么必须按顺序应用合并</span>
+    <p>后面的规则依赖前面产生的 token：<code>257 = (256, "e")</code> 要求 256（"th"）已经存在。如果顺序颠倒，<code>(256, 101)</code> 这个 pair 根本不会出现。</p>
+  </div>
+
+  <h4>作业 1 要在此基础上做什么</h4>
+  <ul>
+    <li><strong>加速 encode</strong>：讲义里的 encode 会遍历全部合并规则，非常慢。只处理真正相关的合并。</li>
+    <li><strong>特殊 token</strong>：识别并保留 <code>&lt;|endoftext|&gt;</code> 这类特殊 token，不能把它拆开。</li>
+    <li><strong>预分词（pre-tokenization）</strong>：先用 GPT-2 的正则把文本切成片段，BPE 只在片段内部合并。</li>
+    <li>让实现尽可能快。</li>
+  </ul>
+  <div class="note"><span class="label">补充：预分词为什么有用</span>
+    <p>GPT-2 的预分词正则：</p>
+<pre>'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+</pre>
+    <p>它把文本切成“可选空格 + 字母串”“可选空格 + 数字串”“标点”“空白”等片段，这正是前面观察到“单词和前面的空格属于同一个 token”的原因。好处有两个：一是防止跨词合并，避免 <code>dog.</code>、<code>dog!</code>、<code>dog?</code> 各占一个词表项；二是提速，训练时只需统计每个片段的出现次数，再按次数加权统计 pair，不用每次扫描整个语料。</p>
+  </div>
+
+  <h3 id="playground">7.6 BPE 演练场</h3>
+  <p>输入任意文本，看讲义中的 BPE 算法每一步合并了什么。平局规则和讲义代码一致（选最先出现的 pair）。</p>
+  <div class="play">
+    <div class="play-controls">
+      <label class="field grow" for="bpe-text">训练文本
+        <input type="text" id="bpe-text" value="low lower lowest newer newest" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field" for="bpe-merges">合并次数
+        <input type="number" id="bpe-merges" value="6" min="0" max="50">
+      </label>
+      <button type="button" id="bpe-run">训练</button>
+      <button type="button" class="ghost" id="bpe-reset">恢复示例</button>
+    </div>
+    <div class="play-stats" id="bpe-stats"></div>
+    <div id="bpe-steps"></div>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section id="summary">
+  <h2><span class="num">08</span>本课要点</h2>
+  <ul>
+    <li>这门课的目标是<strong>通过构建来理解</strong>；能迁移到前沿的是机制和思维方式，直觉只能部分迁移。</li>
+    <li>Bitter lesson 的正确解读：重要的是<strong>能随规模扩展的算法</strong>。<code>accuracy = efficiency × resources</code>。</li>
+    <li>五大模块：basics、systems、scaling laws、data、alignment，全部围绕<strong>效率</strong>展开。</li>
+    <li>Tokenizer 负责字符串和整数序列之间的双向转换，衡量指标之一是压缩率（字节数 / token 数）。</li>
+    <li>字符级、字节级、词级分词都不理想；BPE 是一种有效的、数据驱动的启发式方法。</li>
+    <li>分词目前是一个独立步骤，将来也许能从字节端到端学习。但无论什么方案，都要满足两点：
+      <ol>
+        <li>模型要在序列的<strong>片段（抽象）</strong>上操作，适用于文本、视频、DNA 等；</li>
+        <li>片段应该是<strong>可变长</strong>的，把更多模型容量分配给有意思的片段。</li>
+      </ol>
+    </li>
+  </ul>
+  <p class="muted">下一课：资源核算（resource accounting）。</p>
+</section>
+
+<!-- ================= 9 ================= -->
+<section id="quiz" class="quiz">
+  <h2><span class="num">09</span>自测题</h2>
+  <p class="muted">先自己想，再点开看答案。</p>
+
+  <details><summary><span class="q">Q1</span>为什么说字符级 tokenizer “两头不讨好”？</summary><div>
+    <p>词表很大（Unicode 约 15 万字符），其中大量字符极少出现，embedding 学不好；同时压缩率很低（每个字符一个 token，英文约 1 字节/token），序列很长。词表大和序列长这两个缺点它都占了。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q2</span>用 6ND 估算：训练 8B 参数模型、15T token，需要多少 FLOPs？</summary><div>
+    <p>6 × 8×10⁹ × 15×10¹² = <strong>7.2×10²³ FLOPs</strong>。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q3</span>按 Chinchilla 法则（D = 20N），10²³ FLOPs 预算下最优的 N 和 D 大约是多少？</summary><div>
+    <p>C = 6ND = 6N × 20N = 120N²，所以 N = √(10²³ / 120) ≈ <strong>2.9×10¹⁰（约 29B 参数）</strong>，D = 20N ≈ <strong>5.8×10¹¹（约 577B token）</strong>。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q4</span>为什么 prefill 是 compute-bound，decode 是 memory-bound？</summary><div>
+    <p>Prefill 时所有 prompt token 已知，一次读取权重就能对大量 token 做矩阵乘法，算术强度高。Decode 每步只生成一个 token，却要把全部权重（和 KV cache）从 HBM 读一遍，每读一个字节只做很少的计算，所以瓶颈在显存带宽。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q5</span>对 <code>"aaabdaaabac"</code> 用讲义的 BPE 做 2 次合并，结果是什么？</summary><div>
+    <p>第 1 次：<code>("a","a")</code> 出现 4 次，最多，合并为 256 = "aa"，序列变成 <code>aa a b d aa a b a c</code>。</p>
+    <p>第 2 次：<code>("aa","a")</code> 和 <code>("a","b")</code> 都出现 2 次，平局；<code>("aa","a")</code> 先出现，合并为 257 = "aaa"。</p>
+    <p>结果：<code>aaa b d aaa b a c</code>，11 字节 → 7 个 token。可以在上面的演练场里验证。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q6</span>为什么 encode 时必须按训练顺序应用合并规则？</summary><div>
+    <p>后学到的规则可能由先学到的 token 组成（如 257 = 256 + "e"）。只有先应用前面的规则，后面规则需要的 pair 才会出现。按顺序应用，才能复现训练时的切分方式。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q7</span>词级 tokenizer 的 UNK 为什么会“搞乱困惑度”？</summary><div>
+    <p>所有未登录词都被映射到同一个 UNK token。模型只需预测“这里是个生词”，而不必预测具体是哪个词，概率被人为抬高，困惑度显得更低。不同词表的模型 UNK 比例不同，困惑度也就没法公平比较。BPE 以字节为基础，任何文本都能表示，没有这个问题。</p>
+  </div></details>
+
+  <details><summary><span class="q">Q8</span>为什么 GPT-5 tokenizer 会把 🌍 拆成两个 token？这对 decode 有什么影响？</summary><div>
+    <p>BPE 在字节上合并，🌍 的 4 个 UTF-8 字节（<code>F0 9F 8C 8D</code>）在训练语料中不够常见，没有合并成一个完整 token。所以单个 token 的字节可能不是合法的 UTF-8。实现 decode 时要先把所有 token 的字节拼接起来再整体解码；逐 token 解码会出错，或者需要用 <code>errors="replace"</code> 处理不完整字节。</p>
+  </div></details>
+</section>
+
+<!-- ================= 10 ================= -->
+<section id="links">
+  <h2><span class="num">10</span>延伸阅读</h2>
+  <ul class="links">
+    <li><a href="https://stanford-cs336.github.io/spring2026/">CS336 Spring 2026 课程网站</a></li>
+    <li><a href="https://github.com/stanford-cs336/lectures/blob/main/lecture_01.py">lecture_01.py 讲义源码</a></li>
+    <li><a href="https://github.com/stanford-cs336/assignment1-basics">Assignment 1 (basics)</a></li>
+    <li><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOY23Y0BoGoBGgQ1zmU_MT_">2025 春季课程录像</a></li>
+    <li><a href="https://www.youtube.com/watch?v=zduSFxRajkE">Karpathy：Let's build the GPT Tokenizer</a></li>
+    <li><a href="https://tiktokenizer.vercel.app/?encoder=gpt2">tiktokenizer 在线体验</a></li>
+    <li><a href="https://arxiv.org/abs/1508.07909">Sennrich et al. 2016：BPE 用于 NMT</a></li>
+    <li><a href="https://arxiv.org/abs/2001.08361">Kaplan et al. 2020：Scaling Laws</a></li>
+    <li><a href="https://arxiv.org/abs/2203.15556">Hoffmann et al. 2022：Chinchilla</a></li>
+    <li><a href="https://arxiv.org/abs/2206.07682">Wei et al. 2022：Emergent Abilities</a></li>
+    <li><a href="https://arxiv.org/abs/2002.05202">Shazeer 2020：GLU Variants（SwiGLU）</a></li>
+    <li><a href="https://arxiv.org/abs/2005.04305">Hernandez &amp; Brown 2020：算法效率</a></li>
+    <li><a href="https://arxiv.org/abs/2403.07918">开放基础模型的社会影响</a></li>
+    <li><a href="https://jax-ml.github.io/scaling-book/">How to Scale Your Model</a></li>
+  </ul>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_01.py 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_02.html">第2课 资源核算 →</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+<script>
+(function () {
+  var dec = new TextDecoder("utf-8", { fatal: true });
+
+  function show(bytes) {
+    try {
+      var s = dec.decode(new Uint8Array(bytes));
+      return s.replace(/ /g, "␣").replace(/\n/g, "⏎").replace(/\t/g, "⇥");
+    } catch (e) {
+      return bytes.map(function (b) { return b.toString(16).toUpperCase().padStart(2, "0"); }).join(" ");
+    }
+  }
+
+  function mergeSeq(ind, a, b, n) {
+    var out = [], i = 0;
+    while (i < ind.length) {
+      if (i + 1 < ind.length && ind[i] === a && ind[i + 1] === b) { out.push(n); i += 2; }
+      else { out.push(ind[i]); i += 1; }
+    }
+    return out;
+  }
+
+  function train(text, k) {
+    var ind = Array.from(new TextEncoder().encode(text));
+    var vocab = {};
+    for (var x = 0; x < 256; x++) vocab[x] = [x];
+    var steps = [{ ind: ind.slice(), pair: null, count: 0, newIdx: null }];
+    var merges = [];
+    for (var i = 0; i < k; i++) {
+      if (ind.length < 2) break;
+      var counts = new Map();
+      for (var j = 0; j + 1 < ind.length; j++) {
+        var key = ind[j] + "," + ind[j + 1];
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      var best = null, bestC = 0;
+      counts.forEach(function (c, key) { if (c > bestC) { best = key; bestC = c; } });
+      var p = best.split(",").map(Number);
+      var n = 256 + i;
+      vocab[n] = vocab[p[0]].concat(vocab[p[1]]);
+      ind = mergeSeq(ind, p[0], p[1], n);
+      merges.push([p[0], p[1], n]);
+      steps.push({ ind: ind.slice(), pair: p, count: bestC, newIdx: n });
+    }
+    return { steps: steps, vocab: vocab, merges: merges };
+  }
+
+  function chipsHTML(ind, vocab, hl) {
+    return ind.map(function (t) {
+      var cls = "chip";
+      if (t >= 256) cls += " m" + ((t - 256) % 3);
+      if (t === hl) cls = "chip m3";
+      return '<span class="' + cls + '">' + esc(show(vocab[t])) + "<i>" + t + "</i></span>";
+    }).join("");
+  }
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Static demo for "the cat in the hat"
+  var demo = train("the cat in the hat", 3);
+  for (var s = 0; s < demo.steps.length; s++) {
+    var el = document.getElementById("demo-" + s);
+    if (el) el.innerHTML = chipsHTML(demo.steps[s].ind, demo.vocab, demo.steps[s].newIdx);
+  }
+  var fox = Array.from(new TextEncoder().encode("the quick brown fox"));
+  demo.merges.forEach(function (m) { fox = mergeSeq(fox, m[0], m[1], m[2]); });
+  document.getElementById("demo-fox").innerHTML = chipsHTML(fox, demo.vocab, null);
+
+  // Playground
+  var tIn = document.getElementById("bpe-text");
+  var kIn = document.getElementById("bpe-merges");
+  var out = document.getElementById("bpe-steps");
+  var stats = document.getElementById("bpe-stats");
+
+  function run() {
+    var text = tIn.value;
+    var k = Math.max(0, Math.min(50, parseInt(kIn.value, 10) || 0));
+    if (!text) { out.innerHTML = ""; stats.textContent = "输入一些文本后点击“训练”。"; return; }
+    var r = train(text, k);
+    var nBytes = r.steps[0].ind.length;
+    var last = r.steps[r.steps.length - 1].ind.length;
+    stats.innerHTML = "<span>字节数 <b>" + nBytes + "</b></span><span>最终 token 数 <b>" + last +
+      "</b></span><span>压缩率 <b>" + (nBytes / last).toFixed(2) + "</b></span><span>实际合并 <b>" +
+      (r.steps.length - 1) + "</b> 次</span>";
+    var html = "";
+    r.steps.forEach(function (st, i) {
+      var head;
+      if (i === 0) head = "<b>初始</b><span>" + st.ind.length + " 个 token</span>";
+      else head = "<b>第 " + i + " 次</b><span>(" + st.pair[0] + ", " + st.pair[1] + ") → <code>" + st.newIdx +
+        " = \"" + esc(show(r.vocab[st.newIdx])) + "\"</code></span><span>出现 " + st.count + " 次</span><span>" +
+        st.ind.length + " 个 token</span>";
+      html += '<div class="step"><div class="step-head">' + head + '</div><div class="chips">' +
+        chipsHTML(st.ind, r.vocab, st.newIdx) + "</div></div>";
+    });
+    out.innerHTML = html;
+  }
+  document.getElementById("bpe-run").addEventListener("click", run);
+  document.getElementById("bpe-reset").addEventListener("click", function () {
+    tIn.value = "low lower lowest newer newest"; kIn.value = 6; run();
+  });
+  tIn.addEventListener("keydown", function (e) { if (e.key === "Enter") run(); });
+  run();
+
+})();
+</script>
