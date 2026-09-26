@@ -1,0 +1,213 @@
+<!--meta
+{
+ "num": 16,
+ "short": "RLVR 与推理模型",
+ "unit": "Alignment",
+ "title": "后训练（二）：可验证奖励的强化学习（RLVR）",
+ "lede": "预训练加 RLHF 大约能到 GPT-3.5 的水平；今天要一路走到 o1 和 R1。RLHF 因为过度优化无法干净地扩展；如果在奖励可以精确验证的领域（数学、代码）做 RL，就能真正“优化我们想要的东西”。这一课先讲算法：PPO 的实际实现、GRPO 及其偏差与修正；再做三个案例研究：DeepSeek R1、Kimi K1.5、Qwen 3。",
+ "question": "奖励能被精确验证时，强化学习怎样把模型的推理能力推到新高度？算法里有哪些隐藏的偏差？",
+ "source": "lecture_16.pdf",
+ "meta": {"对应讲义": "lecture_16.pdf", "对应作业": "Assignment 5（GRPO）", "下一课": "智能体"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>RLHF 的根本限制</strong>：奖励模型是人类偏好的一个有噪声、有偏差的近似。优化得越狠，模型越会利用这些噪声（过度优化），所以只能“点到为止”。</p>
+    <p><strong>RLVR 的想法</strong>：换到 RL 擅长的领域，那里的奖励就是我们真正想要的东西。数学题答案对不对、代码能否通过测试，都可以被程序<strong>精确验证</strong>。奖励没有噪声，就可以放心地大力优化。</p>
+    <p><strong>为什么这能提升推理？</strong>模型在预训练中已经见过大量推理过程，具备潜在的能力。RL 只需要一个结果信号（对 / 错），就能反复强化那些通向正确答案的推理行为：更长的思考、自我检查、回溯重试。这些行为不需要人去示范，是在优化中“长”出来的。</p>
+    <p><strong>算法的核心是方差控制</strong>：只有序列末尾一个稀疏的 0/1 奖励，策略梯度的方差很大。PPO 用价值函数做基线，GRPO 用同组其他样本做基线。</p>
+  </div>
+</section>
+
+<section id="ppo">
+  <h2><span class="num">02</span>回顾：实践中的 PPO</h2>
+  <p>PPO（2017）是在真正的 RL 任务上优化奖励的策略梯度方法，OpenAI Five（2019）就是用它训练的。概念上，它的目标函数就是全部（见 OpenAI Spinning Up）。但如果有人专门写了一篇博客讲“PPO 的 37 个实现细节”，你就知道事情不简单了。</p>
+  <p>在语言模型中：动作是 token，奖励是在整个序列末尾给出的一个大的稠密分数（Zheng et al., 2023）。以 AlpacaFarm 的 PPO 实现为例：</p>
+  <ul>
+    <li><strong>外层循环</strong>：生成 rollout；<strong>内层循环</strong>：在这些 rollout 上多次优化损失。</li>
+    <li><strong>损失计算</strong>：标准的裁剪目标，cliprange = 0.2。</li>
+    <li><strong>奖励塑形</strong>：每个 token 加一个 KL 惩罚 <code>−β(log π_θ − log π_ref)</code>，最后一个 token 加上奖励模型的完整分数。实践中，对新策略对数概率低于参考模型的序列，裁剪 KL 项。这可能有助于稳定：一旦模型崩溃，可以防止 KL 发散。</li>
+    <li><strong>广义优势估计（GAE）</strong>：用优势而不是奖励。有趣的细节：这其实是一个<strong>老虎机</strong>问题（整个序列是一个动作，结果只在末尾），取 γ = λ = 1 就可以，此时优势就是“剩余回报减去价值估计”：<code>A_t = R − V(s_t)</code>。</li>
+  </ul>
+  <p>期望看到的训练曲线：总奖励（包括奖励模型分数）上升，KL 奖励为负。这是一个老虎机设定，曲线应该相当平稳。</p>
+  <h3 id="why-new">为什么还需要新算法</h3>
+  <ul>
+    <li><strong>为什么不用 PPO？</strong>实现复杂；需要价值模型（占显存，还要额外调参）。</li>
+    <li><strong>为什么不用 DPO？</strong>数据本质上不是成对的（不是 Bradley–Terry 比较），而是“对/错”；而且 DPO 是离线的（虽然可以通过迭代变成在线）。</li>
+  </ul>
+</section>
+
+<section id="grpo">
+  <h2><span class="num">03</span>GRPO</h2>
+  <p>从 PPO 出发（很多部分相同），去掉价值函数和优势计算，把优势换成<strong>组内 z 分数</strong>：对同一个问题 q 采样一组 G 个回答 o₁…o_G，得到奖励 r₁…r_G，</p>
+  <div class="formula">Â_i = ( r_i − mean(r₁…r_G) ) / std(r₁…r_G)<small>回答 o_i 的每个 token 都用这同一个优势</small></div>
+  <div class="formula">J = E[ (1/G) Σ_i (1/|o_i|) Σ_t min( ρ_{i,t} Â_i , clip(ρ_{i,t}, 1−ε, 1+ε) Â_i ) − β KL(π_θ ‖ π_ref) ]</div>
+  <p>在在线情况下（rollout 后立即更新，ρ = 1），这就是<strong>带组归一化奖励的策略梯度</strong>。</p>
+  <p>GRPO 非常简单（因为没有价值函数），人们会写很小的实现（例如 nano-aha-moment）：</p>
+  <ol>
+    <li>为每个 rollout 计算奖励；</li>
+    <li>在每组内做均值/方差归一化（实现中 std 加一个 1e-4 的稳定项）；</li>
+    <li>计算 KL 项；</li>
+    <li>在损失上做梯度更新。</li>
+  </ol>
+  <pre><span class="c"># 组内优势（对每个问题采样 G 个回答）</span>
+rewards = rewards.view(-1, G)
+advantages = (rewards - rewards.mean(dim=1, keepdim=True)) / (rewards.std(dim=1, keepdim=True) + 1e-4)</pre>
+  <p>效果：DeepSeekMath 原论文中，GRPO 胜过 RFT（只强化正确答案的拒绝采样微调），过程监督还能带来一些额外收益（后面会再谈）。</p>
+</section>
+
+<section id="bias">
+  <h2><span class="num">04</span>仔细审视 GRPO 的目标</h2>
+  <p>GRPO 与 PPO 的关键区别在于优势。这好不好？需要绕道看一点 RL 理论。</p>
+  <div class="derive">
+    <p><strong>基线不改变梯度的期望</strong>（Sutton &amp; Barto）：对任何只依赖状态（这里是问题 q）的 b，</p>
+    <p style="text-align:center"><code>E_{o~π}[ b · ∇log π(o) ] = b Σ_o π(o) ∇log π(o) = b Σ_o ∇π(o) = b ∇ Σ_o π(o) = b ∇1 = 0</code></p>
+    <p>所以把奖励减去任何与动作无关的基线，梯度仍然无偏，但方差可以大大降低。组内均值就是这样一个基线（严格说，要用<em>其他</em>样本的均值才完全无偏，即 leave-one-out 的 REINFORCE）。</p>
+    <p><strong>但除以标准差不是合法的基线操作</strong>：它按问题对梯度重新加权，改变了优化的目标。</p>
+  </div>
+  <h3 id="drgrpo">Dr. GRPO：两个偏差与修正（Liu et al., 2025）</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>项</th><th>造成的偏差</th><th>修正</th></tr></thead>
+      <tbody>
+        <tr><td>除以组内标准差</td><td>组内奖励方差小的问题（几乎全对，或几乎全错，即太简单或太难）被放大权重</td><td>去掉 std，只减均值</td></tr>
+        <tr><td>按回答长度 1/|o_i| 归一化</td><td>正确回答越短、每个 token 奖励越大，鼓励短的对答案；错误回答越长、每个 token 惩罚越小，<strong>鼓励长的错答案</strong></td><td>用一个常数代替 |o_i|（例如最大生成长度）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><span class="label">补充：长度偏差的直觉</span>
+    <p>设一个错误回答的优势为 −1。长 100 token 时，每个 token 被推低 1/100；长 1000 token 时，每个 token 只被推低 1/1000。对模型来说，“把错误答案写长”是一种降低惩罚的方式。于是训练中回答越来越长，这部分增长并非来自更好的推理。</p>
+  </div>
+  <p>修正后的版本非常接近带 leave-one-out 基线的 REINFORCE。</p>
+</section>
+
+<section id="r1">
+  <h2><span class="num">05</span>案例一：DeepSeek R1</h2>
+  <p>这篇论文引发了一场社会现象。它的非凡之处：</p>
+  <ul>
+    <li>性能超过 OpenAI o1；</li>
+    <li>公开了 RL 配方（而且相当简单）；</li>
+    <li>终结了“必须用 MCTS 或过程奖励模型（PRM）”的猜测；</li>
+    <li>给出了关于 SFT 的洞察（R1-Zero 和蒸馏版 R1）。</li>
+  </ul>
+  <p>算法建立在 DeepSeekMath 的 GRPO 之上，但 R1 <strong>没有</strong>使用过程监督。</p>
+  <h3 id="r1zero">受控实验：R1-Zero</h3>
+  <p>基础模型：DeepSeek-V3，<strong>直接做 RL，不做 SFT</strong>。奖励只有两种：准确性奖励（答案对不对）；格式奖励（是否使用思考标签）。数据未公开。结果：比 o1 稍差。</p>
+  <p>有趣的现象：训练过程中思维链越来越长；出现了“aha 时刻”，模型在推理中途说“等等，让我重新检查一下”。</p>
+  <p>但这些现象可能被夸大了。Dr. GRPO 的后续分析指出：长度增长可能部分来自有偏的目标（上一节的长度偏差）；基础模型本身就已经会产生“aha”式的自我反思。</p>
+  <h3 id="r1full">R1 的完整流程</h3>
+  <p>DeepSeek-V3 → 推理 SFT → RL（GRPO）→ SFT/RLHF。与 R1-Zero 的主要区别：</p>
+  <ul>
+    <li><strong>SFT 初始化</strong>：先用普通的（长）思维链数据做 SFT，可能还有额外的验证（描述含糊）。宣称的好处是可读性。数据的来源不太清楚。</li>
+    <li><strong>语言一致性奖励</strong>：RL 自然会导致思维链中出现混合语言，所以额外奖励思维链使用与问题相同的语言。</li>
+    <li><strong>第二阶段加入不可验证的奖励</strong>。</li>
+  </ul>
+  <p>少量样本就足以从 LM 中引导出推理能力：例如 s1 只用 1000 道数学和科学题，加上 Gemini/R1 生成的长思维链。</p>
+  <p><strong>之后的 SFT/RLHF</strong>：SFT 训练 2 个 epoch，推理数据包括不可验证的任务（如“证明 X”），用 V3 当评审（60 万条）；非推理数据来自 V3 的 SFT 数据集（20 万条）。RLHF 阶段复用 R1-Zero 式的推理 RL；不可验证的任务用 V3 的 RLHF 流程，仍然使用 GRPO。</p>
+  <h3 id="distill">蒸馏</h3>
+  <p>能让不会推理的模型学会推理吗？让 R1 生成 80 万条思维链轨迹，用来蒸馏 Qwen 2.5。蒸馏出的小模型推理能力很强，而且比直接在小模型上做 RL 更有效。</p>
+  <h3 id="r1fail">不成功的尝试</h3>
+  <p>论文专门有一节写失败的尝试：<strong>过程奖励模型</strong>（PRM800K、DeepSeekMath 风格）：细粒度的步骤很难定义，自动标注不可靠，而且容易被奖励作弊；<strong>MCTS</strong>：token 级的搜索空间太大，价值模型难以训练。</p>
+</section>
+
+<section id="kimi">
+  <h2><span class="num">06</span>案例二：Kimi K1.5</h2>
+  <p>为什么研究它？与 R1 同时发布，同样用 RL 击败了 o1，并提供了与 R1 互补的细节。关键步骤：数据集构建（难度过滤）→ SFT（长思维链）→ RL（自己的策略梯度损失）。</p>
+  <h3 id="kimi-data">数据整理与 SFT</h3>
+  <ul>
+    <li>标准的数学类数据整理，平衡各主题；</li>
+    <li>排除选择题和判断题（容易蒙对，产生假阳性奖励）；</li>
+    <li>只选模型在 best-of-8 下仍然做错的题（足够难）。</li>
+  </ul>
+  <p>SFT 的描述很少，只说是“提示工程”（可能是蒸馏）。</p>
+  <h3 id="kimi-rl">Kimi 的 RL 目标</h3>
+  <div class="derive">
+    <p>目标：<code>max_θ E[r(x, y)] − τ KL(π_θ ‖ π_old)</code>（奖励基于参考答案判定）。</p>
+    <p>和 DPO 一样做非参数假设并反解，最优策略满足 <code>r(x, y) − τ log Z = τ log( π*(y|x) / π_old(y|x) )</code>。</p>
+    <p>用平方损失作为替代目标，让当前策略满足这个等式：</p>
+    <p style="text-align:center"><code>L = E[ ( r(x, y) − τ log Z − τ log( π_θ(y|x) / π_old(y|x) ) )² ]</code></p>
+    <p>τ log Z 用同组样本奖励的均值来估计。展开梯度，本质上是一个带基线（组内平均奖励）和正则项的策略梯度。它没有 GRPO 那样的长度偏差。</p>
+  </div>
+  <h3 id="kimi-len">长度控制</h3>
+  <p>Kimi 还想进一步压缩思维链，于是在每个 batch 中加入长度奖励：</p>
+  <div class="formula">λ = 0.5 − (len − min_len) / (max_len − min_len)<small>正确回答的长度奖励为 λ；错误回答为 min(0, λ)</small></div>
+  <ul>
+    <li>λ ∈ [−0.5, 0.5]，组内越长的回答 λ 越负；</li>
+    <li>正确的回答被激励变短；</li>
+    <li>错误的回答被激励短于组内长度区间的中点（但不会因为短而得到正奖励）。</li>
+  </ul>
+  <p>因为这会影响性能，他们只在训练后期才开启长度奖励。</p>
+  <h3 id="kimi-details">其他细节</h3>
+  <ul>
+    <li><strong>课程学习</strong>：给数据标上难度，从易到难；按 (1 − 成功率) 的比例采样题目，避免反复做已经会的题。</li>
+    <li><strong>奖励</strong>：代码题用有标准解的题目生成新测试用例；数学题用 80 万个样本训练一个思维链奖励模型，判断答案是否等价（比规则匹配更可靠）。</li>
+  </ul>
+  <h3 id="rl-infra">RL 基础设施</h3>
+  <p>RL 的系统和利用率问题非常重要。为什么 RL 难以高效？</p>
+  <ul>
+    <li>on-policy 意味着要 rollout，也就是（慢的）推理；</li>
+    <li>在训练和 rollout 之间切换，往往要用不同的框架（训练用 Megatron 之类，推理用 vLLM 之类），还要同步权重；</li>
+    <li>长思维链让 batch 中的序列长度极不均匀，最长的那条决定了整批的时间。</li>
+  </ul>
+  <p>Kimi 让训练和推理共享同一批 GPU，并对长 rollout 做切分处理。结果：在只用数学数据训练的小模型上，也能看到性能随 RL 训练和回答长度稳定提升。</p>
+  <h3 id="kimi-ei">与专家迭代的比较</h3>
+  <p>能否避免 RL 的“负梯度”，只从正确样本中学习（专家迭代 / 拒绝采样微调）？Kimi 的消融显示，使用负梯度的 RL 方法样本效率更高，效果更好。</p>
+</section>
+
+<section id="qwen3">
+  <h2><span class="num">07</span>案例三：Qwen 3</h2>
+  <p>性能超过 o1 和 R1（虽然发布得更晚），并提供了一些关于规模和数据的有趣结果。整体流程：推理 RL 之后是 RLHF（和 R1 一样），再往后是蒸馏（给小模型）。</p>
+  <h3 id="qwen-rl">SFT 与推理 RL</h3>
+  <ul>
+    <li><strong>难度过滤</strong>（像 Kimi 一样用 best-of-n）：删除不用思维链就能答对的题；删除与验证集过于相似的题。</li>
+    <li><strong>人工过滤思维链质量</strong>：区分“蒙对”和“真正推对”。</li>
+    <li><strong>只用 3995 个样本</strong>做 GRPO。</li>
+  </ul>
+  <h3 id="fusion">思考模式融合</h3>
+  <ol>
+    <li>把非思考数据和思考数据混在一起训练，用标签区分（如 /think 和 /no_think）；</li>
+    <li>用一个特殊字符串实现提前终止：思考长度达到预算时，插入“时间有限，我现在直接回答”之类的提示，结束思考。</li>
+  </ol>
+  <p>这提供了测试时扩展的旋钮：思考预算越大，数学、代码等任务的表现越好。另外，通用 RLHF 会让数学/STEM 能力略有下降。</p>
+  <h3 id="coder">智能体 RL：Qwen3-Coder-Next</h3>
+  <p>在 Qwen3-Next 的基础上，专门为智能体能力做后训练。</p>
+  <ul>
+    <li><strong>中期训练数据</strong>：GitHub 的长上下文“仓库级”数据（拼接多个文件，6000 亿 token）；PR（用 RAG 检索仓库状态作为上下文）；Common Crawl 中的文本—代码混合文档（用 LLM 解析 HTML）；合成数据（LM 针对网页生成编程问答；在各种环境中运行编程智能体生成的轨迹）；指令遵循和填空（FIM）数据。</li>
+    <li><strong>专家模型</strong>：分别训练网页开发专家（在经过 VLM 和智能体动作检查的“有效网页代码”上 SFT）、UX 专家（在多种工具调用格式上训练）、单轮问答专家、软件工程专家，最后蒸馏合并成 Qwen3-Coder-Next。</li>
+    <li><strong>智能体环境</strong>：自动构建 SWE-bench 风格的环境，共 80 万个任务，在上面做智能体 RL。</li>
+  </ul>
+</section>
+
+<section id="summary">
+  <h2><span class="num">08</span>本课要点</h2>
+  <ul>
+    <li>过度优化是 RLHF 的问题，在奖励可验证的狭窄领域做 RL 是一种解决办法。</li>
+    <li>GRPO 简单（没有价值函数），让 RLVR 变得容易，但有标准差归一化和长度归一化两个偏差；Dr. GRPO 去掉它们。</li>
+    <li>任何与动作无关的基线都不改变策略梯度的期望，只降低方差。</li>
+    <li>成功的配方很多：R1（冷启动 SFT + GRPO + RLHF + 蒸馏）、Kimi K1.5（难度过滤、自己的策略梯度、长度奖励、课程）、Qwen 3（极少的 RL 样本、思考模式融合、智能体 RL）。</li>
+    <li>RL 的系统效率很关键：rollout 就是推理，长度不均、框架切换都会拖慢。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">09</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>一组 4 个回答的奖励为 [1, 0, 0, 1]，GRPO 的优势是多少？如果奖励是 [1, 1, 1, 1] 呢？</summary><div>
+    <p>均值 0.5，标准差（样本标准差）约 0.577，优势约为 [0.87, −0.87, −0.87, 0.87]。全为 1 时均值 1、标准差 0，优势全为 0（加上 1e-4 稳定项），这道题不提供任何学习信号。所以要过滤掉太简单或太难的题。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>证明：从奖励中减去一个只依赖问题的常数 b，不改变策略梯度的期望。</summary><div>
+    <p>E_{o~π}[b ∇log π(o)] = b Σ_o π(o) ∇π(o)/π(o) = b ∇ Σ_o π(o) = b ∇1 = 0。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>为什么 GRPO 的 1/|o_i| 归一化会让错误回答越来越长？</summary><div>
+    <p>错误回答的优势为负，总惩罚被平均分到每个 token 上。回答越长，每个 token 分到的负梯度越小，模型可以通过加长错误回答来减轻惩罚。Dr. GRPO 改用固定常数归一化，消除了这个激励。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>Kimi 的长度奖励中，组内最短为 100 token、最长为 900 token。一个 300 token 的正确回答和一个 700 token 的错误回答，长度奖励各是多少？</summary><div>
+    <p>正确回答：λ = 0.5 − 200/800 = 0.25，长度奖励 0.25。错误回答：λ = 0.5 − 600/800 = −0.25，长度奖励 min(0, −0.25) = −0.25。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>为什么 R1 在 RL 之前还要做一轮“冷启动”SFT，而 R1-Zero 不做也能工作？</summary><div>
+    <p>R1-Zero 证明了纯 RL 可以引出推理，但它的思维链可读性差、混杂多种语言。少量高质量长思维链 SFT 给出一个更好、更可读的起点，让 RL 更稳定、收敛更快，最终也更适合给用户使用。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>为什么 RL 训练的系统效率比预训练难做？</summary><div>
+    <p>每一步都要先 rollout（自回归推理，memory-bound、串行），再训练；两者通常用不同的框架，需要同步权重；长思维链的长度差异很大，batch 里最长的序列决定整步时间，GPU 大量空等。</p>
+  </div></details>
+</section>

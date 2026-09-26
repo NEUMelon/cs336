@@ -1,0 +1,197 @@
+<!--meta
+{
+ "num": 15,
+ "short": "SFT 与 RLHF",
+ "unit": "Alignment",
+ "title": "预训练之后：SFT、中期训练与 RLHF",
+ "lede": "预训练能得到 GPT-3，怎样才能得到 InstructGPT？指令遵循是一种非凡的控制能力。这一课分两部分：先讲监督微调（SFT）：数据长什么样、什么样的数据有效、怎样把指令数据规模化（中期训练）；再讲 RLHF：偏好数据怎么收集、PPO 的思路、DPO 的完整推导，以及过度优化和模式坍缩等副作用。",
+ "question": "怎样把一个“续写文本”的模型，变成一个听指令、合人意的助手？模仿和优化各起什么作用？",
+ "source": "lecture_15.pdf",
+ "meta": {"对应讲义": "lecture_15.pdf", "对应作业": "Assignment 5 (alignment)", "下一课": "强化学习与推理"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>预训练数据并不完全是我们想要的行为，但它能规模化。能不能收集我们<strong>确实想要</strong>的行为数据来训练 LM？有两种根本不同的思路：</p>
+    <ul>
+      <li><strong>模仿（SFT）</strong>：拟合 <code>p̂(y|x) ≈ p*(y|x)</code>，p* 是某个参考分布（人写的好回答）。这是纯生成建模的视角，需要从参考策略采样的示例。</li>
+      <li><strong>优化（RLHF）</strong>：找 p̂ 使 <code>max_p E_p[R(y, x)]</code>，R 是一个我们能测量的奖励函数。这时 LM 是一个<strong>策略</strong>，而不是某个分布的模型。</li>
+    </ul>
+    <p><strong>为什么需要优化，而不只是模仿？</strong>生成—验证差距：人写出来的东西，不一定是人最喜欢的 LM 输出。比如新闻摘要研究（Zhang et al., 2023）发现，人们对模型写的摘要的评价，与专门请来的自由撰稿人写的摘要相当甚至更高。评判比生成容易，所以用“评判”作为信号可以超越示范者的水平。</p>
+  </div>
+  <p>注意：后训练的信息相当稀少。ChatGPT 之前的竞争时期有丰富的公开信息（Stiennon 2020 的 RLHF 论文附带标注指南；Anthropic HH 的 Bai 2022 详细描述了安全标注的设置）；现在则很少：开源界大量使用蒸馏，发布说明里讲得不多；闭源界把数据当作秘方。</p>
+  <p>标准做法（InstructGPT，Ouyang et al., 2022）：先模仿（SFT），再强化（RLHF）。</p>
+</section>
+
+<section id="sft-data">
+  <h2><span class="num">02</span>SFT 数据</h2>
+  <p>SFT 有两个要素：训练数据和方法。数据要回答两个问题：这些数据集里到底有什么？构建高性能的指令微调数据时，什么最重要？</p>
+  <h3 id="progression">开放界 SFT 数据的演进</h3>
+  <p>FLAN → Self-Instruct → Alpaca → ShareGPT/Vicuna → OpenAssistant → WizardLM → Tülu 3 → Nemotron → 工具使用等。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>数据集</th><th>典型样本</th><th>特点</th></tr></thead>
+      <tbody>
+        <tr><td>FLAN</td><td>“给这封邮件写个主题行”；“这段文本是关于什么的？选项：World / Sports / Business / Sci/Tech”；“把餐厅数据写成一句话”</td><td>把已有 NLP 基准改写成指令格式，答案简短</td></tr>
+        <tr><td>Alpaca</td><td>“给出三条保持健康的建议”；“什么是算法？”；“求列表平均数”（附代码）</td><td>由模型生成的指令和回答，更像日常对话</td></tr>
+        <tr><td>OpenAssistant</td><td>“介绍经济学中‘买方垄断’概念，并引用相关研究”；“给小学科学作业推荐便宜有趣的项目”</td><td>人写的长篇、详细回答，带引用</td></tr>
+        <tr><td>Nemotron-SFT-OpenCode</td><td>编程问题的回答里包含工具调用（加载 skill、写 todo 列表、读 AGENTS.md）</td><td>面向智能体、工具使用</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>它们在哪些方面不同？</p>
+  <ul>
+    <li><strong>“健谈程度”</strong>：FLAN 的数据通常是正确的，但人们不想和一个 NLP 基准聊天。后来的数据集转向更长、更详细的回答。</li>
+    <li><strong>细节</strong>：OASST 在各种事实性知识上讲得很细。我们会看到，这既是优点也是缺点。</li>
+    <li><strong>工具使用</strong>：最近一两年，SFT 明显转向工具使用和智能体类下游应用。</li>
+    <li>不那么显眼但很重要的：规模、安全。</li>
+  </ul>
+  <h3 id="style">风格：长度和格式</h3>
+  <p>不同数据训练出的模型，回答长度差别很大（Wang et al., 2023）。用偏好来评测时，风格影响很大：人类和 GPT-4 评审都表现出很强的长度效应（Dubois et al., 2023）。但这些风格因素对其他基准（如 MMLU）的表现大多影响不大。</p>
+  <h3 id="knowledge">引用、复杂知识与事实性</h3>
+  <p>回看 OpenAssistant 那个“买方垄断”的例子，结尾有一条参考文献：Bivens &amp; Mishel (2013)。这个样本在教模型什么？</p>
+  <ol>
+    <li>教模型认识 Bivens &amp; Mishel 这篇文献？</li>
+    <li>教模型在被要求时输出引用？</li>
+  </ol>
+  <p>但这通过什么机制实现？模型真的知道这篇文献吗？如果模型在预训练中没学过这条知识，SFT 教给它的其实是“在这种场合编造一个像样的引用”。</p>
+  <div class="key"><span class="label">民间智慧（Schulman 2023；Gekhman et al. 2024）</span>在模型“不知道的事实”上微调，会让它产生幻觉。模型学到的不是新事实，而是“即使不知道也要自信地回答”的行为模式。</div>
+  <p>启示：① 即使 LM 的用途就是长尾知识，也可能不应该在长尾知识上微调；② 原则上，RL 式的正确性反馈可能有帮助（奖励“知道就说、不知道就不说”）；③ LM 中知识的存储和提取是混乱而微妙的。</p>
+  <h3 id="safety-sft">安全</h3>
+  <p>LM 被广泛部署给终端用户，需要一些安全控制：虚假信息、诈骗和垃圾信息等（Kang et al., 2023；Goldstein et al., 2023）。现实中的安全 SFT 细节很少，Llama 2 大约用了几千个样本。主要方法是从用户那里提取场景。</p>
+  <p>只用一点数据就能做安全微调：大约 500 个样本就能显著提升安全性。在 Alpaca 式数据中加入 500 个安全样本，模型就会遵守安全准则（仇恨言论、Anthropic HH 等评测）。挑战在于既要安全又不能过度拒绝。</p>
+  <div class="key"><span class="label">SFT 数据小结</span>
+    <ol>
+      <li>SFT 在<strong>提取</strong>预训练已有的行为时效果最好，而不是添加新行为；</li>
+      <li>加入（事实上正确的）数据有时反而有害；</li>
+      <li>少量对的行为数据（安全、指令遵循、风格）作用很大，但长尾部分需要更多数据。</li>
+    </ol>
+  </div>
+</section>
+
+<section id="midtrain">
+  <h2><span class="num">03</span>怎么微调：从 SFT 到中期训练</h2>
+  <p>就是做梯度下降。在很多学术场景里，基本就是这样：只在回答部分计算交叉熵损失。但如果你有大量算力和数据，想把指令微调规模化呢？</p>
+  <p><strong>把指令微调变成预训练</strong>（越来越流行）：</p>
+  <ol>
+    <li>在网页/预训练数据上预训练；</li>
+    <li>把指令微调数据混进预训练（通常在后期、学习率衰减阶段）；</li>
+    <li>再做一轮真正的（但很短的）指令微调。</li>
+  </ol>
+  <p>这样可以扩大指令数据的规模，而不会发生灾难性遗忘。这就是“中期训练”或“两阶段训练”。许多 LLM 公司都知道这个配方（但很少写成文档），今天大多数模型都在用。MiniCPM、JetMoE 等模型公开了这种做法（结合 WSD 调度：在衰减阶段加入高质量和指令数据）。</p>
+</section>
+
+<section id="rlhf-data">
+  <h2><span class="num">04</span>RLHF 数据</h2>
+  <p>RLHF 部分要讲三件事：数据（怎么收集、要注意什么）、方法（PPO、DPO）、副作用。</p>
+  <h3 id="pairwise">成对反馈</h3>
+  <p>标准设置：给定一个 prompt，采样两个（或多个）回答，让标注者选出更好的一个（或打分排序）。InstructGPT 有详细的标注指南（有帮助、真实、无害，以及冲突时的优先级）。Google Bard 的标注说明也曾流出。</p>
+  <h3 id="crowd">众包的现实</h3>
+  <ul>
+    <li>标注平台很多（Outlier、Scale AI 等），报酬差别很大；“专家标注”增长迅速。</li>
+    <li>很难找到真正高质量、可验证的标注者；很难让他们真正去核对正确性；还要小心标注者自己用 AI。</li>
+    <li>大规模数据采集可能有严重的伦理问题（劳动条件、心理负担）。</li>
+  </ul>
+  <h3 id="demo">标注者是谁很重要</h3>
+  <p>标注者群体的分布会显著改变 RLHF 后模型的行为，例如政治观点和人群倾向（Santurkar et al., 2023）。即使标注者很多也是如此：人类偏好标注会被“自信”和“格式”等风格因素影响，而低估事实错误（Hosking, Blunsom &amp; Bartolo, 2024）。</p>
+  <h3 id="ai-feedback">AI 生成的反馈</h3>
+  <p>GPT-4 是一个出奇好的成对反馈系统：与人类的一致率接近人类标注者之间的一致率，在系统级别上排名相关性几乎完美。前沿实践中大量使用 AI 反馈：UltraFeedback（用于 Zephyr 7B、OLMo、Tülu 3 等）。<strong>宪法 AI</strong>（Constitutional AI，Bai et al.）更进一步：让模型根据一组原则批评和修改自己的回答，再用 AI 偏好来训练，也就是自我训练。</p>
+  <h3 id="length">长度效应</h3>
+  <p>RLHF 的一个非常显著的结果是回答变长（Chen et al., 2024；Singhal et al., 2024）。很大一部分“奖励提升”其实来自长度，而不是质量。</p>
+</section>
+
+<section id="ppo">
+  <h2><span class="num">05</span>PPO（概念版）</h2>
+  <p>有了高质量的成对反馈，怎样让模型利用它？第一种方法是 PPO：原始的、非常难调的方法。InstructGPT 的目标函数看起来很无害：</p>
+  <div class="formula">max_π  E_{x, y~π}[ r(x, y) ] − β · KL( π(·|x) ‖ π_ref(·|x) )<small>最大化奖励，同时不要离 SFT 模型太远</small></div>
+  <p>其中奖励模型 r 用成对数据训练（Stiennon et al., 2020）：<code>loss = −log σ( r(x, y_w) − r(x, y_l) )</code>，y_w 是被选中的回答，y_l 是被拒绝的回答。</p>
+  <div class="derive">
+    <p><strong>尝试一：策略梯度。</strong>用对数导数技巧：</p>
+    <p style="text-align:center"><code>∇_θ E_{z~p_θ}[R(z)] = Σ_z R(z) ∇p_θ(z) = Σ_z R(z) p_θ(z) ∇log p_θ(z) = E_{p_θ}[ R(z) ∇_θ log p_θ(z) ]</code></p>
+    <p>采样、乘以奖励、增大高奖励样本的对数概率。问题：方差太大。</p>
+    <p><strong>尝试二：TRPO。</strong>在当前策略附近把问题线性化，并用 KL 约束限制每步的变化（信赖域）。</p>
+    <p><strong>尝试三：PPO。</strong>用裁剪代替约束：设概率比 <code>ρ = π_θ(y|x) / π_old(y|x)</code>，优势为 A，</p>
+    <p style="text-align:center"><code>L = E[ min( ρ A, clip(ρ, 1−ε, 1+ε) A ) ]</code></p>
+    <p>一旦新旧策略的概率比超出 [1−ε, 1+ε]，就不再给更多的梯度，从而限制每次更新的幅度，可以对同一批样本做多轮更新。</p>
+  </div>
+  <p>PPO 需要同时维护策略、参考模型、奖励模型和价值函数，还要在线生成（rollout），工程上相当复杂。</p>
+</section>
+
+<section id="dpo">
+  <h2><span class="num">06</span>DPO：没有眼泪的 RLHF？</h2>
+  <p>能不能完全避免“RL”（即 on-policy 的 RL 算法）？人们想过一些合理的办法：用控制 token 做 SFT（被选中的前面加 [GOOD]，被拒绝的加 [BAD]）；只在被偏好的输出上训练；训练奖励模型、采样输出、在最好的上面训练；采样 1024 个取最好的（best-of-n）。</p>
+  <p>DPO 的目标是简化 PPO：去掉奖励模型；去掉所有 on-policy 的东西（rollout、外层循环等）。取而代之：在好的回答上做对数似然的梯度上升，在坏的回答上做（适当加权的）梯度下降。</p>
+  <h3 id="dpo-deriv">推导</h3>
+  <div class="derive">
+    <p><strong>第一步：非参数假设下求最优策略。</strong>目标（对每个 x）：</p>
+    <p style="text-align:center"><code>max_π  Σ_y π(y) r(y) − β Σ_y π(y) log( π(y) / π_ref(y) )</code></p>
+    <p>假设 π 可以是任意分布（非参数假设）。整理：</p>
+    <p style="text-align:center"><code>= −β Σ_y π(y) log( π(y) / (π_ref(y) e^{r(y)/β}) ) = −β KL( π ‖ π_ref e^{r/β} / Z ) + β log Z</code></p>
+    <p>KL 在两个分布相等时取最小值 0，所以最优解为</p>
+    <p style="text-align:center"><code>π*(y|x) = π_ref(y|x) · exp( r(x,y)/β ) / Z(x)，  Z(x) = Σ_y π_ref(y|x) exp( r(x,y)/β )</code></p>
+    <p><strong>第二步：反解出“隐含奖励”。</strong>对上式取对数：</p>
+    <p style="text-align:center"><code>r(x, y) = β log( π*(y|x) / π_ref(y|x) ) + β log Z(x)</code></p>
+    <p>也就是说，任何一个策略都对应一个隐含的奖励函数（Kimi 的 thinking 论文也用了这个等价关系）。</p>
+    <p><strong>第三步：用成对数据的最大似然训练这个隐含奖励。</strong>Bradley–Terry 模型（和训练奖励模型时一样）：</p>
+    <p style="text-align:center"><code>P(y_w ≻ y_l | x) = σ( r(x, y_w) − r(x, y_l) )</code></p>
+    <p>代入隐含奖励，<strong>β log Z(x) 在相减中抵消</strong>了（这是关键：Z 无法计算，但它不依赖 y）。得到 DPO 损失：</p>
+    <p style="text-align:center"><code>L_DPO = −E[ log σ( β log(π_θ(y_w|x)/π_ref(y_w|x)) − β log(π_θ(y_l|x)/π_ref(y_l|x)) ) ]</code></p>
+  </div>
+  <p>关键步骤：① 做非参数假设（把 π 和 r 以闭式联系起来）；② 用策略来参数化奖励；③ 用监督损失优化这个奖励（从而优化策略）。概念上，这就是在非参数假设和另一种参数化下，对成对奖励做最大似然估计。</p>
+  <h3 id="dpo-grad">DPO 的梯度</h3>
+  <div class="derive">
+    <p>记隐含奖励 <code>r̂(y) = β log(π_θ(y|x)/π_ref(y|x))</code>，则</p>
+    <p style="text-align:center"><code>∇L_DPO = −β E[ σ( r̂(y_l) − r̂(y_w) ) · ( ∇log π_θ(y_w|x) − ∇log π_θ(y_l|x) ) ]</code></p>
+    <p>在好的回答上正梯度、在坏的回答上负梯度，权重是隐含奖励模型的“预测误差”：当模型已经把 y_w 排在 y_l 前面很多时，σ(·) 很小，几乎不再更新；排错时权重大。</p>
+  </div>
+  <h3 id="dpo-practice">实践与变体</h3>
+  <p>Llama 等开放模型的后训练使用 DPO + 专家迭代（反复采样、筛选最好的、再训练）。变体太多了，Tülu 3 论文中值得注意的两个：</p>
+  <ul>
+    <li><strong>SimPO</strong>：不需要参考模型，用长度归一化的对数似然作为隐含奖励，并加一个间隔 γ：<code>−log σ( (β/|y_w|) log π(y_w) − (β/|y_l|) log π(y_l) − γ )</code>。</li>
+    <li><strong>长度归一化的 DPO</strong>：把 DPO 中的对数概率比除以回答长度，缓解对长回答的偏好。</li>
+  </ul>
+  <p>但 PPO 也能做到，有时还更好。和 RL 相关的实证工作很棘手：很多结论高度依赖具体的实验设置。</p>
+</section>
+
+<section id="pitfalls">
+  <h2><span class="num">07</span>RLHF 需要警惕的问题</h2>
+  <h3 id="overopt">过度优化</h3>
+  <p>在许多不同的 RLHF 式优化器上都能看到：针对奖励优化超过某一点后，真实效果开始下降（对奖励模型过拟合，即 Goodhart 定律）。这对人类偏好和带噪声的 LM 偏好都成立，但对无噪声的 LM 偏好不成立。这说明问题来自奖励信号中的噪声和偏差：优化器会去利用它们。KL 惩罚正是为了限制这种偏离。</p>
+  <h3 id="collapse">模式坍缩</h3>
+  <p>RLHF 让模型不再是“概率模型”：它为了最大化奖励，把概率集中在少数高奖励的回答上，输出多样性（熵）下降，默认也不再校准。预训练模型对“答案正确的概率”往往是校准良好的，RLHF 之后置信度普遍偏高。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">08</span>本课要点</h2>
+  <ul>
+    <li>SFT 在提取预训练已有的能力时最有效；在模型不知道的知识上微调可能引发幻觉；少量对的数据（安全、格式）作用很大。</li>
+    <li>中期训练：把指令数据混入预训练后期，再做短 SFT，可以规模化指令微调而不遗忘。</li>
+    <li>RLHF 从模仿走向优化：利用“评判比生成容易”的生成—验证差距。</li>
+    <li>RLHF 数据收集同样困难：标注者分布、风格与长度偏见、AI 反馈。</li>
+    <li>PPO = 策略梯度 + 信赖域思想 + 裁剪，工程复杂；DPO 通过非参数假设把 RLHF 变成成对数据上的监督学习。</li>
+    <li>要警惕对奖励的过度优化和模式坍缩。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">09</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>为什么“在模型不知道的事实上微调”会增加幻觉？</summary><div>
+    <p>模型无法从少量 SFT 样本中真正习得新知识，但能学到回答的<strong>形式</strong>：面对此类问题要自信地给出具体事实。于是对于它不知道的问题，它也会自信地编造。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>推导：KL 正则化的奖励最大化问题的最优策略是什么？β 趋于 0 和趋于无穷时分别怎样？</summary><div>
+    <p>π*(y) ∝ π_ref(y) exp(r(y)/β)。β → 0：概率集中到奖励最高的回答上（纯粹最大化奖励）；β → ∞：π* → π_ref（完全不偏离参考模型）。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>DPO 推导中，为什么无法计算的配分函数 Z(x) 不是问题？</summary><div>
+    <p>Bradley–Terry 模型只依赖两个回答的奖励之差。隐含奖励中的 β log Z(x) 只和 x 有关、和 y 无关，在 r(x, y_w) − r(x, y_l) 中正好抵消。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>某样本上 β = 0.1，策略相对参考模型对 y_w 的对数概率比为 +2、对 y_l 为 −1。DPO 损失和梯度权重是多少？</summary><div>
+    <p>隐含奖励差 = 0.1 × (2 − (−1)) = 0.3。损失 = −log σ(0.3) ≈ −log 0.574 ≈ 0.554。梯度权重 σ(−0.3) ≈ 0.426（乘以 β）。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>PPO 为什么要裁剪概率比？</summary><div>
+    <p>同一批 rollout 要用于多轮梯度更新，策略会逐渐偏离采样时的策略，重要性比 ρ 可能变得很大，导致更新过猛、训练不稳定。裁剪让 ρ 超出 [1−ε, 1+ε] 后不再提供额外梯度，相当于一个廉价的信赖域。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>什么是生成—验证差距？它为什么是 RLHF 能超越 SFT 的原因？</summary><div>
+    <p>判断哪个回答更好，比自己写出最好的回答容易得多。SFT 只能模仿示范者，上限是示范者的水平；RLHF 用比较作为信号，可以把模型推向示范者自己写不出、但能识别为更好的回答。</p>
+  </div></details>
+</section>
