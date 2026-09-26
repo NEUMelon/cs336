@@ -1,0 +1,655 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS336 第8课笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #e9eeec;
+  --ink: #18211e;
+  --ink-2: #4a5753;
+  --ink-3: #6f7c78;
+  --line: #d3dcd9;
+  --accent: #0e6a62;
+  --accent-soft: #d9ece8;
+  --amber: #9a5b0c;
+  --amber-soft: #f6ead6;
+  --code-bg: #eaefed;
+  --chip-a: #cfe7e2;
+  --chip-b: #f1dfc4;
+  --chip-c: #dcdff2;
+  --chip-ink: #18211e;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1413;
+    --surface: #161d1b;
+    --surface-2: #1d2624;
+    --ink: #e2e9e6;
+    --ink-2: #aab8b3;
+    --ink-3: #85938e;
+    --line: #2b3633;
+    --accent: #5cc6b8;
+    --accent-soft: #173330;
+    --amber: #e3a857;
+    --amber-soft: #2e2415;
+    --code-bg: #1a2220;
+    --chip-a: #1f4540;
+    --chip-b: #4a3a20;
+    --chip-c: #2e3354;
+    --chip-ink: #eef3f1;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1413;
+  --surface: #161d1b;
+  --surface-2: #1d2624;
+  --ink: #e2e9e6;
+  --ink-2: #aab8b3;
+  --ink-3: #85938e;
+  --line: #2b3633;
+  --accent: #5cc6b8;
+  --accent-soft: #173330;
+  --amber: #e3a857;
+  --amber-soft: #2e2415;
+  --code-bg: #1a2220;
+  --chip-a: #1f4540;
+  --chip-b: #4a3a20;
+  --chip-c: #2e3354;
+  --chip-ink: #eef3f1;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code {
+  background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* ---------- header ---------- */
+.masthead {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 28px;
+  border-bottom: 1px solid var(--line);
+  display: grid; gap: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.masthead h1 {
+  font-family: var(--serif); font-weight: 700; margin: 0;
+  font-size: clamp(30px, 5vw, 44px); line-height: 1.25; text-wrap: balance;
+}
+.masthead .lede { margin: 0; color: var(--ink-2); max-width: 62ch; font-size: 17px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-3); }
+.meta span b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- layout ---------- */
+.layout {
+  max-width: 1120px; margin: 0 auto;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px;
+  padding-top: 32px;
+}
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+.toc details { border: 0; }
+.toc summary {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 4px;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.toc ol ol { margin: 2px 0 6px 14px; }
+.toc a {
+  display: block; color: var(--ink-2); text-decoration: none; padding: 3px 8px;
+  border-left: 2px solid transparent; line-height: 1.5;
+}
+.toc a:hover { color: var(--ink); background: var(--surface-2); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+
+main { max-width: 760px; min-width: 0; }
+
+/* ---------- sections ---------- */
+section { padding-block: 8px 28px; scroll-margin-top: 16px; }
+section + section { border-top: 1px solid var(--line); padding-top: 32px; }
+h2 {
+  font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.35;
+  margin: 0 0 16px; text-wrap: balance; display: flex; gap: 12px; align-items: baseline;
+}
+h2 .num { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; flex: none; }
+h3 { font-size: 19px; font-weight: 700; margin: 30px 0 10px; line-height: 1.45; scroll-margin-top: 16px; text-wrap: balance; }
+h4 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 4px; }
+li::marker { color: var(--ink-3); }
+strong { font-weight: 700; }
+.muted { color: var(--ink-3); font-size: 14px; }
+
+/* callouts: role-based */
+.note, .key, .src {
+  padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 15px;
+}
+.note > :last-child, .key > :last-child, .src > :last-child { margin-bottom: 0; }
+.key { background: var(--accent-soft); }
+.note { background: var(--amber-soft); }
+.label {
+  display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+}
+.key .label { color: var(--accent); }
+.note .label { color: var(--amber); }
+.src { border: 1px dashed var(--line); color: var(--ink-2); }
+.src .label { color: var(--ink-3); }
+
+blockquote {
+  margin: 16px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--line);
+  color: var(--ink-2); font-style: italic;
+}
+
+.formula {
+  font-family: var(--mono); font-size: 17px; text-align: center; padding: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin: 18px 0;
+  overflow-x: auto;
+}
+.formula small { display: block; font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+pre {
+  background: var(--code-bg); border-radius: 8px; padding: 14px 16px; margin: 16px 0;
+  overflow-x: auto; line-height: 1.6; font-size: 13.5px;
+}
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; font-size: 13.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+td .tag { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+/* timeline */
+.timeline { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 0; }
+.timeline > li {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line); margin: 0;
+}
+.timeline > li:last-child { border-bottom: 0; }
+.timeline .era { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 3px; line-height: 1.5; }
+.timeline .body > :last-child { margin-bottom: 0; }
+.timeline .body b { display: block; margin-bottom: 2px; }
+.timeline ul { margin: 0; font-size: 15px; list-style: disc; padding-left: 1.2em; }
+
+/* token chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono); font-size: 13px; line-height: 1.3; padding: 4px 7px; border-radius: 5px;
+  background: var(--surface-2); color: var(--chip-ink); display: inline-flex; flex-direction: column; align-items: center; min-width: 28px;
+}
+.chip i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+.chip.m0 { background: var(--chip-a); }
+.chip.m1 { background: var(--chip-b); }
+.chip.m2 { background: var(--chip-c); }
+.chip.m3 { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.step {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.step-head { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+.step-head b { color: var(--ink); }
+
+/* modules grid */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 18px 0; }
+.module {
+  display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); text-decoration: none; color: var(--ink);
+}
+.module:hover { border-color: var(--accent); }
+.module .a { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.module b { font-size: 16px; }
+.module span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+
+/* playground */
+.play { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 18px; margin: 18px 0; }
+.play-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.field.grow { flex: 1 1 260px; }
+.play input[type="text"], .play input[type="number"] {
+  font: inherit; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+.play input[type="number"] { width: 90px; }
+.play button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+}
+.play button.ghost { background: transparent; color: var(--accent); }
+.play-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.play-stats b { color: var(--ink); font-family: var(--mono); }
+#bpe-steps { display: grid; gap: 0; }
+
+/* quiz */
+.quiz details {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 12px 16px; margin: 10px 0;
+}
+.quiz summary { cursor: pointer; font-weight: 500; }
+.quiz summary .q { font-family: var(--mono); color: var(--accent); margin-right: 8px; font-size: 13px; }
+.quiz details[open] summary { margin-bottom: 8px; }
+.quiz details > div { font-size: 15px; color: var(--ink-2); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+.links { columns: 2 260px; column-gap: 32px; padding-left: 1.2em; font-size: 14.5px; }
+.links li { break-inside: avoid; }
+
+footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 16px; }
+  .toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+  .toc summary::after { content: " ▾"; }
+  .masthead { padding-block: 32px 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 15.5px; }
+  h2 { font-size: 23px; }
+  .timeline > li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- shared additions for the series ---------- */
+.topbar {
+  max-width: 1120px; margin: 0 auto; padding-block: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+  font-size: 13.5px; border-bottom: 1px solid var(--line);
+}
+.topbar a { text-decoration: none; color: var(--ink-2); }
+.topbar a:hover { color: var(--accent); }
+.topbar .home { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.06em; color: var(--accent); font-weight: 600; }
+.topbar .pn { display: flex; gap: 16px; flex-wrap: wrap; }
+.fp {
+  border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin: 18px 0;
+  background: var(--surface); font-size: 15.5px;
+}
+.fp > :last-child { margin-bottom: 0; }
+.fp .label { color: var(--accent); }
+.derive {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 16px 0; font-size: 15px;
+}
+.derive > :last-child { margin-bottom: 0; }
+.fig { margin: 18px 0; overflow-x: auto; }
+.fig svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.fig figcaption { font-size: 13px; color: var(--ink-3); text-align: center; margin-top: 6px; }
+.fig svg text { fill: var(--ink-2); font-family: var(--sans); font-size: 12px; }
+.fig svg .t-ink { fill: var(--ink); }
+.fig svg .t-acc { fill: var(--accent); }
+.fig svg .t-mono { font-family: var(--mono); }
+.fig svg .s-line { stroke: var(--line); }
+.fig svg .s-ink { stroke: var(--ink-2); }
+.fig svg .s-acc { stroke: var(--accent); }
+.fig svg .f-surf { fill: var(--surface); }
+.fig svg .f-surf2 { fill: var(--surface-2); }
+.fig svg .f-acc { fill: var(--accent-soft); }
+.fig svg .f-amb { fill: var(--amber-soft); }
+.fig svg .f-chipa { fill: var(--chip-a); }
+.fig svg .f-chipb { fill: var(--chip-b); }
+.fig svg .f-chipc { fill: var(--chip-c); }
+.fig svg .f-none { fill: none; }
+.src-note { font-size: 13px; color: var(--ink-3); }
+</style>
+
+<nav class="topbar" aria-label="课程导航">
+  <a class="home" href="../index.html">CS336 · 全部笔记</a>
+  <div class="pn"><a href="lecture_07.html">← 第7课 并行（一）</a><a href="lecture_09.html">第9课 Scaling laws（一） →</a></div>
+</nav>
+
+<header class="masthead">
+  <div class="eyebrow">Stanford CS336 · Spring 2026 · Lecture 8</div>
+  <h1>多 GPU 并行（二）：ZeRO、模型并行与 3D 并行</h1>
+  <p class="lede">单卡在算力和显存上都有上限，训练大模型必须跨卡、跨机器。这一课系统梳理大规模训练的并行范式：数据并行及 ZeRO 1–3、流水线并行、张量并行、序列并行、专家并行，理解为什么大家同时使用多种并行，以及真实的大模型训练是怎么配置的。</p>
+  <div class="meta"><span><b>对应讲义</b> lecture_08.pdf</span><span><b>对应作业</b> Assignment 2（DDP、ZeRO-1）</span><span><b>下一课</b> Scaling laws（一）</span></div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <details id="toc-details" open>
+      <summary>目录</summary>
+<ol>
+<li><a href="#fp">1. 从第一性原理出发</a></li>
+<li><a href="#net">2. 网络基础</a><ol>
+<li><a href="#rs-ag">All-reduce = reduce-scatter + all-gather</a></li>
+<li><a href="#topo">TPU 与 GPU 的网络设计</a></li>
+</ol></li>
+<li><a href="#dp">3. 数据并行与 ZeRO</a><ol>
+<li><a href="#naive-dp">朴素数据并行</a></li>
+<li><a href="#mem16">显存到底有多糟</a></li>
+<li><a href="#zero1">ZeRO stage 1：切分优化器状态</a></li>
+<li><a href="#zero2">ZeRO stage 2：再切分梯度</a></li>
+<li><a href="#zero3">ZeRO stage 3（即 FSDP）：什么都切</a></li>
+<li><a href="#fit">ZeRO 实战：能放下多大的模型</a></li>
+<li><a href="#dp-issues">数据并行仍有的问题</a></li>
+</ol></li>
+<li><a href="#mp">4. 模型并行</a><ol>
+<li><a href="#pp">流水线并行（切深度）</a></li>
+<li><a href="#tp">张量并行（切宽度）</a></li>
+<li><a href="#act">激活值显存与序列并行</a></li>
+<li><a href="#ep">专家并行</a></li>
+<li><a href="#cp">上下文并行 / Ring Attention</a></li>
+</ol></li>
+<li><a href="#table">5. 并行方式总表</a></li>
+<li><a href="#3d">6. 3D（4D）并行：怎么组合</a></li>
+<li><a href="#real">7. 真实模型怎么做</a></li>
+<li><a href="#summary">8. 本课要点</a></li>
+<li><a href="#quiz">9. 自测题</a></li>
+</ol>
+    </details>
+  </nav>
+  <main>
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>多机扩展想要三样东西：</p>
+    <ol>
+      <li><strong>显存线性扩展</strong>：能放下的最大模型参数量随 GPU 数线性增长；</li>
+      <li><strong>算力线性扩展</strong>：模型 FLOPs 随 GPU 数线性增长；</li>
+      <li><strong>简单的通信原语</strong>：只用 all-reduce、reduce-scatter、all-gather、all-to-all 等集合操作。</li>
+    </ol>
+    <p>训练时占显存的东西可以分成两类：<strong>静态的</strong>（参数、梯度、优化器状态，与参数量成正比）和<strong>动态的</strong>（激活值，与 batch × 序列长度 × 层数成正比）。每种并行都是在决定：哪些东西要切分、切分后要通信什么（梯度、参数，还是激活值）、通信能不能和计算重叠。</p>
+    <p>新的计算单位是<strong>整个数据中心</strong>。</p>
+  </div>
+</section>
+
+<section id="net">
+  <h2><span class="num">02</span>网络基础</h2>
+  <p>单卡扩展有极限：世界上最快的超级计算机有 exaFLOPs 级别的算力，而模型大到任何单张 GPU 都放不下。解决办法是节点内通过高速互连并行，节点间通过高速网络并行，把显存和计算需求分摊到许多 GPU 和机器上。</p>
+  <h3 id="rs-ag">All-reduce = reduce-scatter + all-gather</h3>
+  <p>这个分解很重要：在带宽受限的情况下，这已经是最好的做法。所以把 all-reduce 拆开几乎没有额外代价，却让我们可以在中间“只保留自己那一片”。</p>
+  <h3 id="topo">TPU 与 GPU 的网络设计</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>TPU</th><th>GPU</th></tr></thead>
+      <tbody>
+        <tr><td>拓扑</td><td>环形网格（toroidal mesh），只连邻居</td><td>全连接（通过 NVSwitch，最多约 256 张）</td></tr>
+        <tr><td>优点</td><td>便宜，可以做得很快，适合张量并行这类规则的通信</td><td>适合不规则的通信，如专家并行的 all-to-all</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>但情况在变：TPU8i 的网络更接近树形拓扑（可能是为了 MoE），TPU8t 的横向扩展网络（Virgo）用交换网络。为什么不把所有卡直接连起来？一个全连接域越大，交换设备和线缆越贵（例如华为 CloudMatrix 384 与 NVIDIA GB200 NVL72 的对比）。</p>
+</section>
+
+<section id="dp">
+  <h2><span class="num">03</span>数据并行与 ZeRO</h2>
+  <h3 id="naive-dp">朴素数据并行</h3>
+  <p>从 SGD 出发：<code>θ_{t+1} = θ_t − η Σᵢ ∇f(xᵢ)</code>。把大小为 B 的 batch 分给 M 台机器，每台算自己那份的梯度，再交换梯度同步。</p>
+  <ul>
+    <li><strong>算力扩展</strong>：每张 GPU 处理 B/M 个样本。好。</li>
+    <li><strong>通信开销</strong>：每个 batch 传输 2 × 参数量。batch 大时可以接受。</li>
+    <li><strong>显存扩展</strong>：没有。每张 GPU 至少要存全部参数。</li>
+  </ul>
+  <h3 id="mem16">显存到底有多糟</h3>
+  <div class="derive">
+    <p>混合精度 + Adam，每个参数需要 <strong>16 字节</strong>，相当于 5 份权重拷贝：</p>
+    <ul>
+      <li>bf16 参数：2 字节</li>
+      <li>bf16 梯度：2 字节</li>
+      <li>fp32 主权重（SGD 真正累加更新的那份）：4 字节</li>
+      <li>fp32 Adam 一阶矩：4 字节（或 bf16 的 2 字节）</li>
+      <li>fp32 Adam 二阶矩：4 字节（或 bf16 的 2 字节）</li>
+    </ul>
+    <p>后三项合称“优化器状态”，占了 16 字节中的 12 字节。</p>
+  </div>
+  <p>ZeRO 的核心想法：把昂贵的部分（状态）切分到各卡上，并利用 reduce-scatter + all-gather 的等价性。</p>
+
+  <h3 id="zero1">ZeRO stage 1：切分优化器状态</h3>
+  <p>每张卡仍有完整的参数和梯度，但只保存 1/N 的优化器状态，只负责更新对应那一片参数。</p>
+  <ol>
+    <li>每张卡在自己的数据上算出完整梯度；</li>
+    <li>对梯度做 <strong>reduce-scatter</strong>：每张卡拿到自己负责那一片的梯度总和（通信量 ≈ 参数量）；</li>
+    <li>每张卡用自己的梯度片和状态片更新自己那片参数；</li>
+    <li>对参数做 <strong>all-gather</strong>：大家拿到完整的新参数（通信量 ≈ 参数量）。</li>
+  </ol>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>朴素 DDP</th><th>ZeRO stage 1</th></tr></thead>
+      <tbody>
+        <tr><td>通信原语</td><td>一次 all-reduce（梯度）</td><td>一次 reduce-scatter（梯度）+ 一次 all-gather（参数）</td></tr>
+        <tr><td>通信量</td><td>2 × 参数量</td><td>2 × 参数量</td></tr>
+        <tr><td>显存</td><td>(4 + K) × 参数量</td><td>(4 + K/N) × 参数量</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>（K 为每参数优化器状态的字节数。）通信量完全一样，<strong>在带宽受限的情况下，ZeRO-1 省下的显存是白送的</strong>。</p>
+
+  <h3 id="zero2">ZeRO stage 2：再切分梯度</h3>
+  <p>麻烦在于：我们永远不能实例化完整的梯度向量，但数据并行要求每张卡都计算完整的梯度。解决办法是逐层处理：</p>
+  <ol>
+    <li>沿计算图逐层反向；每算完一层的梯度，立刻 reduce 发给负责它的卡；该层梯度在反向图中不再需要后，立即释放；</li>
+    <li>每张卡用自己的梯度片和状态片更新参数；</li>
+    <li>all-gather 参数。</li>
+  </ol>
+  <h3 id="zero3">ZeRO stage 3（即 FSDP）：什么都切</h3>
+  <p>连参数也切分。沿计算图前进时，<strong>按需请求</strong>参数，用完立即释放。</p>
+  <ul>
+    <li>前向：每层之前 all-gather 该层参数，算完释放；</li>
+    <li>反向：再 all-gather 一次参数，算出梯度后 reduce-scatter，释放；</li>
+    <li>通信量：2 次 all-gather（参数量）+ 1 次 reduce-scatter（参数量）= <strong>3 × 参数量</strong>。</li>
+  </ul>
+  <p>关键是<strong>通信与计算重叠</strong>：计算第 i 层时，预取第 i+1 层的参数。只要每层的计算时间比传一层参数的时间长，通信开销就被掩盖了。整个过程概念上很简单，写一个 FSDP 块包装器就行。</p>
+  <div class="key"><span class="label">ZeRO 的代价</span>DDP 通信 2 × 参数量。ZeRO-1 也是 2 倍，免费，应该总是开；ZeRO-2 也是 2 倍，几乎免费（忽略额外开销）；ZeRO-3 是 3 倍，多 50%，但也不算差（忽略延迟）。</div>
+
+  <h3 id="fit">ZeRO 实战：能放下多大的模型</h3>
+  <p>假设除主权重外全部用 bf16（纯 bf16 训练配合 Kahan 求和是可行的），每参数 12 字节：bf16 参数 2 + bf16 梯度 2 + 状态 8（fp32 主权重 4 + 两个 bf16 矩各 2）。在 8 张 A100 80GB 上：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>方案</th><th>每卡每参数字节数</th><th class="num">最大参数量</th></tr></thead>
+      <tbody>
+        <tr><td>基线（DDP）</td><td>12</td><td class="num">6.67B</td></tr>
+        <tr><td>ZeRO-1</td><td>2 + 2 + 8/8 = 5</td><td class="num">16B</td></tr>
+        <tr><td>ZeRO-2</td><td>2 + (2 + 8)/8 = 3.25</td><td class="num">24.6B</td></tr>
+        <tr><td>ZeRO-3</td><td>12/8 = 1.5</td><td class="num">53.3B</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>（计算方法：80 GB ÷ 每参数字节数。）</p>
+  <h3 id="dp-issues">数据并行仍有的问题</h3>
+  <ul>
+    <li><strong>算力扩展</strong>：机器数不能超过 batch 大小，接近时通信开销很高；而且增大 batch 的收益递减（临界 batch size）。</li>
+    <li><strong>模型放不下</strong>：ZeRO-1、2 不能让显存随卡数扩展；ZeRO-3 原则上可以，但<strong>不减少激活值显存</strong>。</li>
+  </ul>
+</section>
+
+<section id="mp">
+  <h2><span class="num">04</span>模型并行</h2>
+  <p>模型并行在不改变 batch 大小的前提下扩展显存：它像 ZeRO-3 一样把参数切分到各卡上，但<strong>通信的是激活值</strong>（ZeRO-3 通信的是参数）。三种切法对应三种模型并行：流水线并行、张量并行（+ 序列并行）、专家并行。</p>
+
+  <h3 id="pp">流水线并行（切深度）</h3>
+  <p>朴素的按层并行：把层分给不同的 GPU，激活值和部分梯度来回传。利用率很差：n 张 GPU，每张只有 1/n 的时间在工作，其余时间在等反向传播传回来。</p>
+  <p>解决办法：处理多个 micro-batch。第一个 micro-batch 送走后，马上开始算第二个。</p>
+  <div class="formula">气泡时间 / 有效计算时间 = (n_stages − 1) / n_micro<small>所以需要大 batch</small></div>
+  <p>流水线看起来很糟，为什么还用？</p>
+  <ol>
+    <li>比 DDP 省显存；</li>
+    <li>通信性质好（相比 FSDP）：只传激活值（b × s × h），而且是点对点的。</li>
+  </ol>
+  <p>所以一般在较慢的网络链路（节点之间）上用流水线并行，换取显存的扩展。性能高度依赖 batch 大小。</p>
+  <ul>
+    <li>更复杂的流水线调度（交错调度等）可以用更多的通信带宽换取更高的利用率。</li>
+    <li><strong>零气泡流水线</strong>：把反向拆成两部分：① 对激活值反传梯度（后续层在等它，要尽快做）；② 计算权重梯度（没人等，可以任何时候做）。用第 ② 部分去填气泡。</li>
+  </ul>
+
+  <h3 id="tp">张量并行（切宽度）</h3>
+  <p>观察：矩阵乘法可以分解成子矩阵，再把部分和加起来。</p>
+  <div class="derive">
+    <p>MLP：<code>Z = GeLU(XA) B</code>。</p>
+    <p><strong>A 按列切</strong>：A = [A₁, A₂]。则 XA = [XA₁, XA₂]，GeLU 是逐元素的，所以 <code>Y₁ = GeLU(XA₁)</code>、<code>Y₂ = GeLU(XA₂)</code> 可以在两张卡上独立算，不需要通信。</p>
+    <p><strong>B 按行切</strong>：B = [B₁; B₂]。则 <code>Z = Y₁B₁ + Y₂B₂</code>，每张卡算一个部分和，最后 <strong>all-reduce</strong> 一次。</p>
+    <p>记前后两个通信算子为 f 和 g：前向时 f 是恒等（输入 X 每张卡都有），g 是 all-reduce；反向时反过来，f 是 all-reduce（对 X 的梯度要把两张卡的贡献加起来），g 是恒等。</p>
+  </div>
+  <p>在一个 Transformer 块里：</p>
+  <ul>
+    <li><strong>按列切</strong>：QKV 投影、上投影（up-projection）；注意力头天然可以分到不同卡上；</li>
+    <li><strong>按行切</strong>：注意力输出投影、下投影（down-projection）；</li>
+    <li><strong>复制</strong>：归一化层、路由器等。</li>
+  </ul>
+  <p>于是每个注意力子层和每个 MLP 子层各只需前向一次、反向一次 all-reduce。在 GPU 上，张量并行通常只在一个节点内用（最多 8 张卡），因为需要高速互连。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>张量并行</th><th>流水线并行</th></tr></thead>
+      <tbody>
+        <tr><td>气泡</td><td>没有（网络够快就不用互相等待）</td><td>有</td></tr>
+        <tr><td>复杂度</td><td>低，容易包装已有模型</td><td>高</td></tr>
+        <tr><td>对 batch 的要求</td><td>不需要大 batch</td><td>需要大 batch 来掩盖气泡</td></tr>
+        <tr><td>通信量</td><td>每层 <code>8bsh(n−1)/n</code>，all-reduce</td><td>每个 micro-batch <code>bsh</code>，点对点</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>结论：只要有低延迟、高带宽的互连，就用张量并行。</p>
+
+  <h3 id="act">激活值显存与序列并行</h3>
+  <p>最后一个复杂之处：显存是<strong>动态的</strong>。除了静态的参数，激活值也可能很大。张量并行和流水线并行能线性减少参数显存，但激活值呢？（Korthikanti et al., 2022）</p>
+  <div class="derive">
+    <p>每层激活值显存（s = 序列长度，b = batch，h = 隐藏维度，a = 头数，t = 张量并行度，16 位存储，单位字节）：</p>
+    <ul>
+      <li>全部存储：<code>sbh (34 + 5as/h)</code>。其中 5as/h 来自注意力的平方项（分数矩阵、softmax、dropout 掩码），可以像 FlashAttention 那样用重计算去掉。</li>
+      <li>张量并行：<code>sbh (10 + 24/t + 5as/(ht))</code>。矩阵乘相关的激活被切分了，但剩下的 10 这一项没有：LayerNorm 的输入（4sbh）、dropout（2sbh）、注意力和 MLP 的输入（4sbh）。模型越大，这部分越成问题。</li>
+      <li>张量并行 + 序列并行：<code>sbh/t · (34 + 5as/h)</code>，真正线性扩展。</li>
+    </ul>
+  </div>
+  <p><strong>序列并行</strong>的观察：那 10sbh 项全是沿序列逐位置的操作（LayerNorm、dropout），所以可以<strong>沿序列维度</strong>切分。在张量并行区域的入口和出口，把原来的通信算子换成：前向时 g 是 all-gather、ḡ 是 reduce-scatter，反向时反过来。all-reduce = reduce-scatter + all-gather，所以总通信量不变。</p>
+
+  <h3 id="ep">专家并行</h3>
+  <p>不切矩阵乘法，而是把不同的专家放在不同的卡上，把激活值路由过去（all-to-all）。对 MLP 来说，专家并行的行为很像张量并行：需要高带宽、减少激活值显存；但切分矩阵乘法会降低单个 kernel 的效率，路由激活值则不会。</p>
+  <p>组合时的复杂之处：</p>
+  <ul>
+    <li>专家并行通常和数据并行共享副本（EP ≤ DP），数据并行与张量并行的组合可能降低利用率。</li>
+    <li>MoE 只作用在 MLP 上，注意力没有专家。注意力希望张量并行度高（因为不能用专家并行），MLP 希望张量并行度低（更愿意用专家并行）。解决办法是更灵活的并行策略：例如 Megatron 为注意力（TP/CP/DP）和 MLP（ETP/EP/EDP）分别设置并行度。</li>
+  </ul>
+  <h3 id="cp">上下文并行 / Ring Attention</h3>
+  <p>长序列时，把一条序列的激活值切分到多张卡上。每张卡持有一段 query，K/V 块沿环在卡之间轮转，配合在线 softmax 逐块累加注意力。</p>
+</section>
+
+<section id="table">
+  <h2><span class="num">05</span>并行方式总表</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>方法</th><th>通信 / 同步</th><th>每卡参数显存</th><th>每卡激活 / KV 显存</th><th>主要带宽开销</th><th>能扩大全局 batch？</th><th>易用性</th></tr></thead>
+      <tbody>
+        <tr><td>DDP / ZeRO-1</td><td>每步梯度 all-reduce</td><td>不扩展（ZeRO-1 只切优化器状态）</td><td>不变</td><td>梯度流量 O(参数)</td><td>是，随 DP 线性</td><td>很容易</td></tr>
+        <tr><td>FSDP / ZeRO-3</td><td>梯度通信，可重叠</td><td>参数、梯度、状态均约 1/DP</td><td>不变</td><td>参数流量 O(参数)，高于 DDP</td><td>是，随 DP 线性</td><td>中等</td></tr>
+        <tr><td>流水线并行</td><td>层间激活，有气泡</td><td>约 1/PP</td><td>取决于流水线缓冲</td><td>阶段间激活</td><td>否，但需要 micro-batch</td><td>难</td></tr>
+        <tr><td>张量并行</td><td>阻塞式激活通信</td><td>被切的权重约 1/TP</td><td>配合 SP，矩阵乘相关激活约 1/TP</td><td>每个块都有激活大小的集合通信</td><td>否</td><td>难</td></tr>
+        <tr><td>序列 / 上下文并行</td><td>每层交换序列分片</td><td>不变</td><td>序列相关激活 / KV 约 1/SP 或 1/CP</td><td>激活 / KV 通信</td><td>否</td><td>难</td></tr>
+        <tr><td>专家并行</td><td>每个 MoE 层 all-to-all</td><td>只有专家权重约 1/EP</td><td>不变</td><td>token 路由 all-to-all</td><td>否，但每个专家需要足够多 token</td><td>难</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="3d">
+  <h2><span class="num">06</span>3D（4D）并行：怎么组合</h2>
+  <div class="key"><span class="label">经验法则</span>
+    <p><strong>第一步，直到模型放进显存为止：</strong>张量并行 / 专家并行最多到单机 GPU 数；跨机器用流水线并行（或者视带宽用 ZeRO-3）。</p>
+    <p><strong>第二步，直到用完所有 GPU：</strong>剩下的全用数据并行扩展。</p>
+    <p>如果 batch 太小，用梯度累积换取更大的 batch 和更好的通信效率。</p>
+  </div>
+  <p>决定性的量是<strong>每张 GPU 分到的全局 batch 大小</strong>：它太小时，任何并行方式的通信都掩盖不住。</p>
+  <p>Narayanan et al. (2021) 的扩展策略：张量并行先加到 8，然后封顶在 8；流水线并行随模型增大而增加，保证放得下；数据并行随规模逐渐减小，最大的模型 DP = 6。在 64 台机器上并行时，8 × 8（TP=8、PP=8）的配置最好。精心配置的 3D 并行，GPU 数量增加时单卡利用率保持平稳，也就是线性扩展。激活重计算的额外计算可以“自己付费”：它省下的显存允许更大的 batch，反而提高吞吐。</p>
+</section>
+
+<section id="real">
+  <h2><span class="num">07</span>真实模型怎么做</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>模型</th><th class="num">DP</th><th class="num">TP/SP</th><th class="num">EP</th><th class="num">PP</th><th class="num">CP</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>DeepSeek</td><td class="num">ZeRO-1</td><td class="num">1</td><td class="num">8</td><td class="num">16</td><td class="num">?</td><td></td></tr>
+        <tr><td>DeepSeek V3</td><td class="num">ZeRO-1</td><td class="num">1</td><td class="num">64</td><td class="num">16</td><td class="num">?</td><td>EP 跨 8 个节点；1F1B 调度中重叠 all-to-all</td></tr>
+        <tr><td>Yi</td><td class="num">ZeRO-1</td><td class="num">&gt;0</td><td class="num">1</td><td class="num">&gt;0</td><td class="num">?</td><td>Yi-Lightning（2025）用 EP 替代 TP</td></tr>
+        <tr><td>Llama 3 405B</td><td class="num">128</td><td class="num">8</td><td class="num">0</td><td class="num">16</td><td class="num">1</td><td>分阶段：小 batch 起步、预训练、长上下文</td></tr>
+        <tr><td>Gemma 2</td><td class="num">768</td><td class="num">8</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td>ZeRO-3 + TP/SP + DP</td></tr>
+        <tr><td>Mixtral 8x22B（Megatron）</td><td class="num">2</td><td class="num">4</td><td class="num">8</td><td class="num">4</td><td class="num">1</td><td>共 256 卡</td></tr>
+        <tr><td>Nemotron 3 Super 120B（长上下文）</td><td class="num">?</td><td class="num">2</td><td class="num">64</td><td class="num">?</td><td class="num">64</td><td></td></tr>
+        <tr><td>Qwen 3（Megatron）</td><td class="num">?</td><td class="num">2</td><td class="num">32</td><td class="num">8</td><td class="num">1</td><td>小模型主要用 EP ≤ 8</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>规律：TP 一般 ≤ 8；EP 可以很大（但难做）；长上下文阶段用大的 CP。OLMo 的 Dolma 7B 用 FSDP 就够了（大概单节点就放得下）。另一个现实问题：在 Llama 3 405B 这种规模，GPU 故障非常频繁，训练系统必须能自动恢复。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">08</span>本课要点</h2>
+  <ul>
+    <li>超过一定规模，就必须多卡、多节点并行。</li>
+    <li>没有单一的解决方案，通常三类并行（数据、模型、激活）都要用。</li>
+    <li>ZeRO-1/2 以不增加通信量的代价切分优化器状态和梯度；ZeRO-3 多 50% 通信，切分一切静态显存。</li>
+    <li>流水线并行通信少但有气泡，适合跨节点；张量并行没有气泡但通信大，适合节点内。</li>
+    <li>序列并行让激活值显存也线性扩展；专家并行是 MoE 的天然切法。</li>
+    <li>组合的经验法则：TP/EP 到单机上限 → PP 放下模型 → 其余全部 DP。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">09</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>70B 模型、每参数 16 字节（混合精度 Adam），64 张 80GB GPU，只用数据并行。ZeRO-1、ZeRO-3 下每卡静态显存各多少？</summary><div>
+    <p>总计 70B × 16 = 1120 GB。ZeRO-1：参数 2 + 梯度 2 + 状态 12/64 ≈ 4.19 字节/参数 → 约 293 GB，放不下。ZeRO-3：16/64 = 0.25 字节/参数 → 17.5 GB，放得下（激活值另算）。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>为什么说 ZeRO-1 是“免费的”？</summary><div>
+    <p>DDP 的 all-reduce 本来就可以实现为 reduce-scatter + all-gather。ZeRO-1 只是在两步之间插入“只更新自己那片参数”，通信量仍是 2 × 参数量，却把优化器状态显存降到 1/N。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>推导 Megatron MLP 张量并行为什么只需要一次 all-reduce。</summary><div>
+    <p>第一层按列切，GeLU 逐元素，所以各卡独立得到 Y 的不同列；第二层按行切，Z = Σ Yᵢ Bᵢ，各卡得到一个部分和，最后 all-reduce 一次求和。中间不需要任何通信。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>h = 8192、s = 4096、b = 1、a = 64，不做重计算、不做并行，一层激活值显存多少？注意力平方项占多少？</summary><div>
+    <p>sbh = 4096 × 8192 ≈ 3.36×10⁷。34sbh ≈ 1.14 GB；5as/h = 5 × 64 × 4096 / 8192 = 160，160sbh ≈ 5.37 GB。平方项占了约 82%，这就是为什么 FlashAttention 式的重计算这么重要。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>为什么 MoE 模型里注意力和 MLP 想要不同的张量并行度？</summary><div>
+    <p>MLP 可以用专家并行切分（效率高，不切矩阵乘），所以希望 TP 小；注意力没有专家，只能用 TP（或 CP）来切，所以希望 TP 大。统一一个 TP 值会让某一边吃亏，于是 Megatron 为两部分分别设置并行度。</p>
+  </div></details>
+</section>
+  </main>
+</div>
+
+<footer class="end">根据 Stanford CS336 Spring 2026 公开讲义 lecture_08.pdf（Tatsu Hashimoto 主讲） 整理的学习笔记。标注为“第一性原理”“补充”的内容是笔记作者的推导和解释，不在原讲义中。<br><a href="lecture_07.html">← 第7课 并行（一）</a> · <a href="lecture_09.html">第9课 Scaling laws（一） →</a></footer>
+
+<script>
+(function () {
+  var tocD = document.getElementById("toc-details");
+  if (tocD && window.matchMedia("(max-width: 900px)").matches) tocD.open = false;
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var targets = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function onScroll() {
+    var cur = 0;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) cur = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === cur); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+
