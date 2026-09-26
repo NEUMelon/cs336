@@ -1,0 +1,232 @@
+<!--meta
+{
+ "num": 5,
+ "short": "GPU",
+ "unit": "Systems",
+ "title": "GPU：执行模型、内存层级与 FlashAttention",
+ "lede": "语言模型的进步离不开算力的扩展，而今天的算力扩展几乎全靠 GPU 的并行。这一课拆开 GPU：它怎么组织线程、内存为什么分层、什么时候会变慢；然后用六个技巧（控制分歧、低精度、算子融合、重计算、合并访存、分块）解释怎么让它变快，最后用这些知识读懂 FlashAttention。",
+ "question": "GPU 的计算单元远快于内存，怎么组织计算才能让它一直有活干？",
+ "source": "lecture_05.pdf（Tatsu Hashimoto 主讲）",
+ "meta": {"对应讲义": "lecture_05.pdf", "对应作业": "Assignment 2 (systems)", "下一课": "Kernel 与 Triton"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>事实一：算力增长快于内存带宽。</strong>过去 20 年，硬件峰值 FLOP/s 的增长远超 DRAM 带宽和互连带宽的增长（所谓“内存墙”）。所以绝大多数时候，计算单元在<strong>等数据</strong>。</p>
+    <p><strong>事实二：离计算越近的内存越快，也越小越贵。</strong>寄存器 → 共享内存/L1（在 SM 内部）→ L2（在芯片上）→ HBM（芯片旁边的显存）。SRAM 比 DRAM 贵约 100 倍，快约一个数量级。</p>
+    <p><strong>推论：</strong>性能优化的核心就是<strong>减少对慢速内存的访问次数</strong>：把数据搬进快速内存后尽可能多地复用（分块），把多个操作合并成一次读写（融合），用更少的位表示数据（低精度），宁可重算也不存取（重计算），并且按硬件喜欢的方式成块读取（合并访存）。</p>
+  </div>
+  <p>本课目标：让 CUDA 和 GPU 不再神秘；理解 GPU 什么时候会变慢；理解如何设计快速算法。致谢：Horace He 的博客、CUDA MODE 社区、Google 的 <em>How to Scale Your Model</em>。</p>
+  <p>背景：算力能带来可预测的性能提升（scaling laws）。早期靠 Dennard 缩放（单核越来越快），到 2000 年代这条路走到了尽头；此后靠并行扩展，GPU 的算力 10 年增长了 1000 倍以上。没有 GPU 的扩展，就没有 LLM 的扩展。</p>
+</section>
+
+<section id="anatomy">
+  <h2><span class="num">02</span>GPU 的结构</h2>
+  <h3 id="cpu-gpu">GPU 和 CPU 的区别</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>CPU</th><th>GPU</th></tr></thead>
+      <tbody>
+        <tr><td>优化目标</td><td>延迟：让每个线程尽快完成</td><td>吞吐：总共处理尽可能多的数据</td></tr>
+        <tr><td>线程</td><td>少量快速线程</td><td>海量线程</td></tr>
+        <tr><td>芯片面积花在</td><td>控制逻辑、分支预测、大缓存</td><td>大量小计算单元（ALU）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="exec-units">执行单元</h3>
+  <p>GPU 由许多 <strong>SM（streaming multiprocessor）</strong>组成，每个 SM 独立执行“块”（block）；每个 SM 里又有许多 SP（streaming processor），可以并行执行线程。H100 SXM 有 132 个 SM。</p>
+  <h3 id="mem-hier">内存层级</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>层级</th><th>位置</th><th>H100 容量（约）</th><th>谁能访问</th></tr></thead>
+      <tbody>
+        <tr><td>寄存器</td><td>SM 内</td><td>每 SM 256 KB</td><td>单个线程</td></tr>
+        <tr><td>共享内存 / L1</td><td>SM 内</td><td>每 SM 最多约 228 KB</td><td>同一个 block 内的线程</td></tr>
+        <tr><td>L2 缓存</td><td>芯片上</td><td>50 MB</td><td>所有 SM</td></tr>
+        <tr><td>全局内存（HBM）</td><td>芯片旁</td><td>80 GB，约 3.35 TB/s</td><td>所有 SM，最慢</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="exec-model">执行模型：线程、块、warp</h3>
+  <ul>
+    <li><strong>线程（thread）</strong>：真正干活的单位。所有线程执行相同的指令，只是输入不同（SIMT：单指令多线程）。</li>
+    <li><strong>块（block）</strong>：一组线程。每个块在一个 SM 上运行，有自己的共享内存。</li>
+    <li><strong>Warp</strong>：线程总是以 32 个连续编号的线程为一组（warp）一起执行。</li>
+  </ul>
+  <p>内存模型：每个线程能访问自己的寄存器和本块的共享内存。<strong>跨块的信息必须经过全局内存</strong>（慢）。这条限制决定了很多 kernel 的设计。</p>
+  <h3 id="tpu">TPU 呢？</h3>
+  <p>GPU、TPU 和其他加速器在高层上很像：轻量的控制逻辑 + 快速的大矩阵乘单元 + 快速内存。差别在于：TPU 没有 warp，只有块（在矩阵乘法与非矩阵运算之间有不同的取舍）；GPU 的 SM 多，TPU 的 TensorCore 少但每个更大，总的矩阵乘性能相近；两者的组网方式不同（并行那一课再讲）。</p>
+  <h3 id="tensorcore">GPU 就是快速矩阵乘法器</h3>
+  <p>早期研究者用可编程着色器“骗” GPU 做矩阵乘法。V100 起引入了 <strong>Tensor Core</strong>，专门做矩阵乘法的电路。现在矩阵乘法比其他浮点运算快 10 倍以上。所以一个设计如果不能写成矩阵乘法，在 GPU 上就会吃亏。</p>
+  <p>GPU 模型的优点：加 SM 就能扩展；SIMT 模型相对好编程；线程轻量，可以随时挂起和切换（某个 warp 等内存时，SM 切换到另一个 warp，这就是隐藏延迟的方式）。</p>
+</section>
+
+<section id="perf">
+  <h2><span class="num">03</span>让 GPU 变快的六个技巧</h2>
+  <p>即使是方阵乘法，性能表现也可能很复杂。回忆 roofline 模型：这一部分的关键问题是<strong>怎样避免 memory-bound</strong>。</p>
+  <h3 id="divergence">技巧 0：避免控制分歧</h3>
+  <p>这不是内存问题。一个 warp 内的所有线程在同一时刻执行同一条指令。如果 warp 内有 <code>if/else</code> 分支，两条路径会<strong>串行执行</strong>：走 if 的线程执行时，走 else 的线程闲着，反之亦然。条件分支可以用，但开销显著。</p>
+  <h3 id="lowprec">技巧 1：低精度计算</h3>
+  <p>位数少了，要搬的字节就少了。以 n 个元素的逐元素 ReLU 为例：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>精度</th><th>访存</th><th>运算</th><th class="num">每次运算需要的字节</th></tr></thead>
+      <tbody>
+        <tr><td>fp32</td><td>读 x、写 x，各 4 字节</td><td>1 次比较</td><td class="num">8</td></tr>
+        <tr><td>fp16</td><td>读 x、写 x，各 2 字节</td><td>1 次比较</td><td class="num">4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>精度减半，算术强度翻倍。另外 Tensor Core 在低精度下吞吐更高（例如 fp16/bf16 输入、fp32 累加）。</p>
+  <p><strong>低精度的前沿：块缩放格式。</strong></p>
+  <ul>
+    <li><strong>MXFP8</strong>（Blackwell 支持）：元素用 E4M3（因为有了更多缩放因子，可以多给尾数），每 32 个元素共享一个 E8M0 缩放因子（只有指数，就是一个 2 的幂）。代价是转置变得不再简单：沿行分块和沿列分块的缩放因子不同，转置后要重新量化。实际训练中并非所有权重都用 MXFP8。</li>
+    <li><strong>FP4</strong>：每个值只有 15 种取值。讲义这一页标题写的是 MXFP4，但给出的参数（每 16 个值一个 E4M3 缩放因子）对应的是 NVIDIA 的 NVFP4；标准 MXFP4 是每 32 个值一个 E8M0 缩放因子。</li>
+  </ul>
+  <h3 id="fusion">技巧 2：算子融合</h3>
+  <p>把 GPU 想成一座工厂：原料从仓库（内存）运来，在工厂（计算单元）加工。工厂在不断扩建，但运输道路没有同步加宽。如果要做多道工序，每道工序都把半成品运回仓库再运回来，就太傻了。</p>
+  <div class="derive">
+    <p>例：<code>sin²x + cos²x</code>，朴素执行要启动 5 个 kernel（sin、cos、两次平方、加法），每个都读写一遍 HBM：约 5 次读、5 次写。</p>
+    <p>融合成一个 kernel：读一次 x，在寄存器里算完全部 5 步，写一次结果。访存降为 2 次（每元素）。</p>
+  </div>
+  <p>这种“简单”融合（逐元素操作串起来）编译器可以自动完成，例如 <code>torch.compile</code>。</p>
+  <h3 id="recompute">技巧 3：重计算</h3>
+  <p>反向传播要用前向存下的激活值。存和取激活值本身就很贵。</p>
+  <div class="derive">
+    <p>例：三个 sigmoid 叠在一起。朴素做法：前向读 x、写 3 个中间激活；反向再读这些激活，总共 8 次内存读写，算术强度极低。</p>
+    <p>重计算：前向只读 x、写输出；反向时从 x 重新算出中间值（它们只在寄存器里存在），总共 5 次内存访问，是原来的 5/8。</p>
+  </div>
+  <p>和第二课的激活检查点是同一个思想：<strong>当瓶颈是内存访问时，丢掉计算结果、需要时重算，反而更快</strong>。</p>
+  <h3 id="coalesce">技巧 4：合并访存</h3>
+  <p>DRAM 以<strong>突发模式（burst mode）</strong>读取：一次读操作会返回一整段连续的字节。原因在硬件：把 DRAM 的一行复制到感测放大器很慢，而一旦复制完，读这一行中的相邻字节就很便宜。</p>
+  <p>如果一个 warp 的 32 个线程访问的地址落在同一个 burst 里，这些访问会被<strong>合并</strong>成一次。对行优先存储的矩阵：同一 warp 的线程如果沿着行的方向读（相邻线程读相邻列），就是合并的；如果每个线程读不同的行，就不合并，一个 warp 要发起很多次读取。</p>
+  <h3 id="tiling">技巧 5：分块（最重要的一个）</h3>
+  <p>分块就是对线程进行分组和排序，以最小化全局内存访问。回到矩阵乘法 P = M × N（都是 N×N）：朴素实现中，每个线程算 P 的一个元素，要读 M 的一整行和 N 的一整列。访存不合并，而且同样的数据被不同线程反复从全局内存读取。</p>
+  <figure class="fig">
+    <svg viewBox="0 0 540 190" width="540" role="img" aria-label="分块矩阵乘法：M 的一行块与 N 的一列块依次载入共享内存，累加得到 P 的一个块">
+      <g class="s-line f-surf" stroke-width="1">
+        <rect x="20" y="30" width="120" height="120"/><rect x="200" y="30" width="120" height="120"/><rect x="380" y="30" width="120" height="120"/>
+      </g>
+      <g class="s-line" stroke-width="0.8">
+        <line x1="50" y1="30" x2="50" y2="150"/><line x1="80" y1="30" x2="80" y2="150"/><line x1="110" y1="30" x2="110" y2="150"/>
+        <line x1="20" y1="60" x2="140" y2="60"/><line x1="20" y1="90" x2="140" y2="90"/><line x1="20" y1="120" x2="140" y2="120"/>
+        <line x1="230" y1="30" x2="230" y2="150"/><line x1="260" y1="30" x2="260" y2="150"/><line x1="290" y1="30" x2="290" y2="150"/>
+        <line x1="200" y1="60" x2="320" y2="60"/><line x1="200" y1="90" x2="320" y2="90"/><line x1="200" y1="120" x2="320" y2="120"/>
+        <line x1="410" y1="30" x2="410" y2="150"/><line x1="440" y1="30" x2="440" y2="150"/><line x1="470" y1="30" x2="470" y2="150"/>
+        <line x1="380" y1="60" x2="500" y2="60"/><line x1="380" y1="90" x2="500" y2="90"/><line x1="380" y1="120" x2="500" y2="120"/>
+      </g>
+      <rect class="f-chipa" x="20" y="60" width="120" height="30" opacity="0.6"/>
+      <rect class="f-chipb" x="230" y="30" width="30" height="120" opacity="0.7"/>
+      <rect class="f-acc s-acc" x="410" y="60" width="30" height="30" stroke-width="2"/>
+      <rect class="f-none s-acc" x="50" y="60" width="30" height="30" stroke-width="2"/>
+      <rect class="f-none s-acc" x="230" y="60" width="30" height="30" stroke-width="2"/>
+      <text x="80" y="20" text-anchor="middle" class="t-ink">M</text>
+      <text x="260" y="20" text-anchor="middle" class="t-ink">N</text>
+      <text x="440" y="20" text-anchor="middle" class="t-ink">P = M × N</text>
+      <text x="170" y="95" text-anchor="middle" class="t-ink">×</text>
+      <text x="350" y="95" text-anchor="middle" class="t-ink">=</text>
+      <text x="80" y="170" text-anchor="middle">一行块（共 N/T 块）</text>
+      <text x="260" y="170" text-anchor="middle">一列块</text>
+      <text x="440" y="170" text-anchor="middle">P 的一个 T×T 块</text>
+    </svg>
+    <figcaption>计算 P 的一个 T×T 块：沿着 M 的行块和 N 的列块，每个阶段把一对 T×T 小块（加粗框）载入共享内存，算出部分和累加起来。</figcaption>
+  </figure>
+  <p>按阶段计算：① 把 M₀,₀ 和 N₀,₀ 两个块载入共享内存；② 计算 P 这一块的部分和；③ 载入下一对块（M₀,₁ 和 N₁,₀）；④ 重复直到走完。</p>
+  <div class="derive">
+    <p><strong>分块能省多少？</strong>朴素实现中，M 的每个元素要被 P 的同一行的 N 个线程各读一次：<strong>每个输入从全局内存读 N 次</strong>。</p>
+    <p>分块后，一个元素所在的块只需被载入一次就能供 T 个输出使用：<strong>每个输入从全局内存读 N/T 次</strong>，在共享内存里读 T 次。全局内存访问减少 T 倍，而且载入整块时访问是连续的，可以合并。</p>
+  </div>
+  <h3 id="tile-issues">分块的复杂之处</h3>
+  <ul>
+    <li><strong>块大小不整除矩阵维度</strong>：边缘的块只有部分有效数据，SM 利用率下降（tile quantization）。</li>
+    <li><strong>影响块大小的因素</strong>：合并访存、共享内存容量、矩阵维度的可整除性。</li>
+    <li><strong>内存对齐</strong>：burst 按固定边界对齐。如果矩阵的行长度不是合适的倍数，块的起始地址就不对齐，一次载入跨越两个 burst，此时需要填充（padding）。</li>
+  </ul>
+</section>
+
+<section id="mystery">
+  <h2><span class="num">04</span>矩阵乘法之谜：形状为什么影响速度</h2>
+  <p>来自 Horace He 的博客 <em>What shapes do matrix multiplications like?</em>：画出方阵乘法的吞吐随尺寸变化的曲线，会看到三种现象。</p>
+  <ol>
+    <li><strong>整体上升</strong>：矩阵越大，算术强度越高（第二课：约 n/3），越接近 compute-bound。</li>
+    <li><strong>对齐造成的分层</strong>：维度是 32、16、8、2 的倍数时速度依次下降，奇数维度最慢。这是分块和对齐的影响。</li>
+    <li><strong>周期性的骤降</strong>：这是<strong>波量化（wave quantization）</strong>。</li>
+  </ol>
+  <div class="derive">
+    <p>用 256 × 128 的块计算 1792 × 1792 的输出：<code>(1792/256) × (1792/128) = 7 × 14 = 98</code> 个块。A100 有 108 个 SM，一“波”就全部算完。</p>
+    <p>尺寸变成 1793：<code>⌈1793/256⌉ × ⌈1793/128⌉ = 8 × 15 = 120</code> 个块。108 个 SM 一波算不完，要第二波，而第二波只有 12 个块，大部分 SM 空转。</p>
+    <p>多了 1 行数据，耗时几乎翻倍：利用率从 98/108 ≈ 91% 掉到 120/216 ≈ 56%。</p>
+  </div>
+  <div class="key"><span class="label">实用结论</span>把模型维度、词表大小、batch 大小设成 64 或 128 的倍数，是便宜又有效的优化。Karpathy 把 nanoGPT 的词表从 50257 填充到 50304（64 的倍数）就获得了明显的提速。</div>
+  <h3 id="part2-recap">小结：让 ML 负载变快</h3>
+  <ul>
+    <li>减少内存访问：合并访存、融合。</li>
+    <li>把数据搬到共享内存：分块。</li>
+    <li>用内存换计算或精度：量化、重计算。</li>
+  </ul>
+</section>
+
+<section id="flash">
+  <h2><span class="num">05</span>读懂 FlashAttention</h2>
+  <p>FlashAttention（Dao et al.）大幅加速了注意力。它没有减少 FLOPs，而是<strong>减少了 HBM 访问</strong>。</p>
+  <h3 id="attn-io">朴素注意力的问题</h3>
+  <p>注意力是三次矩阵乘法中间夹一个 softmax：<code>S = QKᵀ，P = softmax(S)，O = PV</code>。朴素实现把 n×n 的 S 和 P 写回 HBM，再读回来。n 很大时，这两个矩阵的读写远远超过 Q、K、V 本身的大小，完全是 memory-bound。</p>
+  <h3 id="flash-tile">第一步：对 QKᵀV 分块</h3>
+  <p>FlashAttention 论文的图 1 就是对 QKᵀV 这串矩阵乘法做分块：把 Q 切成行块，K、V 切成列块，在 SRAM 里算出一块 S，马上乘上对应的 V 块并累加到输出上，n×n 矩阵永远不写回 HBM。难点在 softmax：它要对<strong>整行</strong>做归一化，而我们一次只看到一行的一部分。</p>
+  <h3 id="online-softmax">第二步：在线 softmax</h3>
+  <div class="derive">
+    <p>数值稳定的 softmax 要先减去最大值：<code>softmax(x)ᵢ = e^{xᵢ−m} / Σⱼ e^{xⱼ−m}</code>，m = max x。朴素做法需要三遍扫描：求 m、求分母、归一化。</p>
+    <p><strong>在线版本</strong>（Milakov &amp; Gimelshein, 2018）只扫一遍，维护两个量：当前最大值 m 和以当前最大值为基准的分母 d。每来一个新值 xⱼ：</p>
+    <p style="text-align:center"><code>m' = max(m, xⱼ)</code></p>
+    <p style="text-align:center"><code>d' = d · e^{m − m'} + e^{xⱼ − m'}</code></p>
+    <p>第一项把旧的分母从旧基准“换算”到新基准（伸缩求和），第二项加上新元素。最后 d 就是正确的分母。这里可以一次处理一整块，而不必一个元素一个元素地处理。</p>
+    <p><strong>用到注意力上</strong>：输出 O 也按同样方式维护一个未归一化的累加器 o。处理新的一块 S 和 V 时：</p>
+    <p style="text-align:center"><code>o' = o · e^{m − m'} + Σⱼ e^{sⱼ − m'} vⱼ</code></p>
+    <p>所有块处理完后，<code>O = o / d</code>。</p>
+  </div>
+  <h3 id="flash-fwd">合在一起：前向传播</h3>
+  <ul>
+    <li>逐块计算内积 S（分块）；</li>
+    <li>指数运算直接融合在同一个 kernel 里（融合）；</li>
+    <li>用在线、伸缩求和的方式逐块计算 softmax。</li>
+  </ul>
+  <p>反向传播本课不展开：它不存 n×n 的 P，而是只存每行的 m 和 d（O(n) 大小），反向时逐块<strong>重计算</strong> S 和 P。这里分块、融合、重计算三种技巧都用上了。</p>
+  <div class="note"><span class="label">补充：HBM 访问量</span>
+    <p>标准注意力的 HBM 访问量为 Θ(nd + n²)。FlashAttention 为 Θ(n²d²/M)，其中 M 是 SRAM 大小。典型情况下 d = 64–128，M 约 100 KB，d²/M 远小于 1，访存大幅减少。FLOPs 反而因为重计算略有增加，但整体快了好几倍。</p>
+  </div>
+</section>
+
+<section id="summary">
+  <h2><span class="num">06</span>本课要点</h2>
+  <ul>
+    <li>硬件能力在扩展，但底层细节决定了什么能扩展、什么不能。</li>
+    <li>GPU 是大规模并行的 SIMT 机器：线程 → warp（32 个）→ 块（一个 SM）。跨块通信只能走全局内存。</li>
+    <li>算力（尤其是 Tensor Core 矩阵乘法）比内存扩展得快，所以要以“矩阵乘法 + 数据搬运”为中心思考。</li>
+    <li>六个技巧：避免控制分歧、低精度、融合、重计算、合并访存、分块。</li>
+    <li>形状很重要：对齐和波量化能让多 1 行数据的矩阵乘法慢近一倍。</li>
+    <li>FlashAttention = 分块 + 融合 + 在线 softmax + 反向重计算。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">07</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>一个 warp 里一半线程走 if、一半走 else，吞吐会怎样？</summary><div>
+    <p>两条路径串行执行，每条路径执行时只有一半线程在工作，这段代码的有效吞吐约减半。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>分块大小 T 越大越好吗？受什么限制？</summary><div>
+    <p>全局内存访问减少 T 倍，所以希望 T 大。但两块 T×T 数据（及输出累加器）要放进共享内存和寄存器；T 太大会让每个 SM 能同时运行的块变少（occupancy 下降），也会加重边缘块浪费和波量化。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>在 H100（132 个 SM）上用 128 × 128 的块算 2048 × 2048 的输出，一共几波？最后一波利用率多少？</summary><div>
+    <p>块数 16 × 16 = 256。第一波 132，第二波 124，共 2 波。第二波利用率 124/132 ≈ 94%，整体 256/264 ≈ 97%。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>用在线 softmax 处理序列 [1, 3, 2]，写出每步的 m 和 d。</summary><div>
+    <p>初始 m = −∞，d = 0。x=1：m=1，d = 0 + e⁰ = 1。x=3：m=3，d = 1·e^{1−3} + e⁰ = e⁻² + 1 ≈ 1.135。x=2：m=3，d = 1.135 + e^{−1} ≈ 1.503。验证：e^{−2} + e⁰ + e^{−1} ≈ 0.135 + 1 + 0.368 = 1.503。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>FlashAttention 的 FLOPs 比标准注意力多还是少？为什么还是更快？</summary><div>
+    <p>略多（反向要重算 S 和 P）。但标准注意力是 memory-bound 的，时间花在读写 n×n 矩阵上；FlashAttention 让这些矩阵只存在于 SRAM，HBM 访问大幅下降，所以更快。又一次说明 FLOPs 不等于运行时间。</p>
+  </div></details>
+  <details><summary><span class="q">Q6</span>为什么 sin²x + cos²x 融合后能快好几倍，而一个大矩阵乘法融合一个 ReLU 只快一点点？</summary><div>
+    <p>前者全是 memory-bound 的逐元素操作，时间基本等于访存次数，5 次读写降到 1 次，就快了约 5 倍。后者的主体矩阵乘法是 compute-bound 的，ReLU 省下的一次读写只占总时间的很小一部分。</p>
+  </div></details>
+</section>

@@ -1,0 +1,268 @@
+<!--meta
+{
+ "num": 7,
+ "short": "并行（一）",
+ "unit": "Systems",
+ "title": "多 GPU 并行（一）：集合通信与三种基本并行",
+ "lede": "上周讲单卡内部的并行，这周走出单卡。无论单卡还是多卡，计算单元都离数据很远，统一的主题是：编排计算以避开数据传输的瓶颈。这一课先讲分布式通信的积木（集合操作、硬件互连、NCCL 与 torch.distributed），再用深层 MLP 手写数据并行、张量并行、流水线并行的最简实现。",
+ "question": "模型或计算放不进一张卡时，该沿哪个维度切？每种切法要付出什么通信代价？",
+ "source": "lecture_07.py",
+ "meta": {"对应源码": "lecture_07.py", "对应作业": "Assignment 2（DDP、优化器状态切分）", "下一课": "并行（二）"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p><strong>存储层级一直延伸到机器之外。</strong>从快到慢：SM 内的 L1/共享内存 → 单卡 HBM → 同节点多卡之间的 NVLink/NVSwitch → 跨节点的 InfiniBand/以太网。每往下一级，带宽都掉一个数量级左右。</p>
+    <p><strong>为什么要用多卡？</strong>① 参数、梯度、优化器状态、激活值加起来放不进一张卡（内存）；② 想用更多 FLOPs 训练得更快（计算）。</p>
+    <p><strong>怎么切？</strong>一次训练的计算可以看成沿四个维度展开：batch（数据）、宽度（隐藏维度 / 专家）、深度（层）、长度（序列）。选一个维度切开分给不同的卡，就得到一种并行方式：</p>
+    <ul>
+      <li>切 batch → <strong>数据并行</strong>：每张卡有全部参数，处理不同数据，需要同步<strong>梯度</strong>；</li>
+      <li>切宽度 → <strong>张量并行</strong>（或专家并行）：每张卡有每层的一部分，需要交换<strong>激活值</strong>；</li>
+      <li>切深度 → <strong>流水线并行</strong>：每张卡有一部分层，需要在相邻卡之间传递<strong>激活值</strong>；</li>
+      <li>切长度 → <strong>序列并行</strong>。</li>
+    </ul>
+    <p>单卡时用融合和分块减少内存访问；多卡时用<strong>复制</strong>和<strong>切分</strong>减少跨卡通信。能拿来交换的三样东西始终是：重新<strong>计算</strong>、存在本卡<strong>内存</strong>里、存在别的卡上再<strong>通信</strong>。</p>
+  </div>
+</section>
+
+<section id="collectives">
+  <h2><span class="num">02</span>集合通信操作</h2>
+  <p>集合操作（collective operations）是分布式编程的概念原语，来自 1980 年代的并行计算文献。“集合”是指你描述的是一个涉及许多设备的通用通信模式，而不是自己管理点对点通信。这样通常更好也更快。</p>
+  <p>术语：<strong>rank</strong> 是一个设备（GPU）的编号，如 0、1、2、3；<strong>world size</strong> 是设备总数，如 4。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>操作</th><th>输入（rank 0 / 1 / 2 / 3）</th><th>输出</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>Broadcast</td><td>rank 0: [0,1,2,3]</td><td>每个 rank: [0,1,2,3]</td><td>rank 0 载入初始检查点后分发</td></tr>
+        <tr><td>Scatter</td><td>rank 0: [0,1,2,3]</td><td>[0] / [1] / [2] / [3]</td><td>理解 reduce-scatter 的铺垫</td></tr>
+        <tr><td>Gather</td><td>[0] / [1] / [2] / [3]</td><td>rank 0: [0,1,2,3]</td><td>理解 all-gather 的铺垫</td></tr>
+        <tr><td>Reduce</td><td>[0] / [1] / [2] / [3]</td><td>rank 0: [6]</td><td>理解 all-reduce 的铺垫</td></tr>
+        <tr><td><strong>All-gather</strong></td><td>[0] / [1] / [2] / [3]</td><td>每个 rank: [0,1,2,3]</td><td>每个 rank 持有参数分片，前向前收集完整参数</td></tr>
+        <tr><td><strong>Reduce-scatter</strong></td><td>[0,1,2,3] / [1,2,3,4] / [2,3,4,5] / [3,4,5,6]</td><td>[6] / [10] / [14] / [18]</td><td>反向后对梯度求和，但分片存储</td></tr>
+        <tr><td><strong>All-reduce</strong></td><td>同上</td><td>每个 rank: [6,10,14,18]</td><td>反向后对梯度求和，每个 rank 保留完整结果</td></tr>
+        <tr><td>All-to-all</td><td>[0..3] / [4..7] / [8..11] / [12..15]</td><td>[0,4,8,12] / [1,5,9,13] / …</td><td>MoE：把 token 路由到专家所在的卡</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="key"><span class="label">核心等式</span><strong>All-reduce = reduce-scatter + all-gather。</strong>把 all-reduce 拆成两半带来了灵活性：中间可以只保留自己那一片（这就是 ZeRO/FSDP 的基础）。</div>
+  <p>记忆方法：<strong>reduce</strong> 执行某种满足结合律和交换律的操作（sum、min、max）；<strong>scatter</strong> 是 gather 的逆；<strong>all</strong> 表示目的地是所有设备。均衡情况下，all-to-all 就像一次转置；它也能处理不均衡的切分，但切分越均衡越好。</p>
+  <h3 id="ring">补充：ring all-reduce 的通信量</h3>
+  <div class="derive">
+    <p>N 张卡连成环，每张卡的数据大小为 S，切成 N 块。</p>
+    <p><strong>Reduce-scatter 阶段</strong>：N−1 步，每步每张卡把一块（S/N）发给下一张卡，并把收到的块累加到自己的对应块上。结束时每张卡恰好拥有一块完整的和。</p>
+    <p><strong>All-gather 阶段</strong>：再 N−1 步，把完整的块沿环传一圈。</p>
+    <p>每张卡总共发送 <code>2(N−1)/N × S ≈ 2S</code>。时间约为 <code>2S / 带宽</code>，<strong>与卡数 N 几乎无关</strong>。这就是 all-reduce 能扩展到很多卡的原因（代价是延迟随 N 增加，步数为 2(N−1)）。</p>
+  </div>
+</section>
+
+<section id="hardware">
+  <h2><span class="num">03</span>硬件：GPU 之间怎么连</h2>
+  <h3 id="home">家用配置</h3>
+  <ul>
+    <li>同一台机器上的 GPU 通过 PCIe 总线通信（PCIe 7.0 x16 约 242 GB/s）。</li>
+    <li>不同机器之间通过以太网通信（约 200 MB/s）。</li>
+  </ul>
+  <h3 id="dc">数据中心配置</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>层级</th><th>连接方式</th><th class="num">带宽（约）</th></tr></thead>
+      <tbody>
+        <tr><td>单卡内</td><td>HBM（B200）</td><td class="num">8 TB/s</td></tr>
+        <tr><td>节点内：通常 8 张 GPU</td><td>NVLink 连到 NVSwitch（B200 的 NVLink 5.0）</td><td class="num">1.8 TB/s</td></tr>
+        <tr><td>节点间：一个 pod 约 256 个节点</td><td>InfiniBand（PCIe → HCA 网卡 → IB 线缆）</td><td class="num">0.05 TB/s</td></tr>
+        <tr><td>pod 之间：数据中心</td><td>以太网（经过 PCIe → CPU）</td><td class="num">更低</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>绕过 CPU</strong>：以太网要经过 CPU（把数据拷进内核 socket 缓冲区、组装 TCP 包、再拷到网卡的环形缓冲区）。RDMA（远程直接内存访问）让一张 GPU 直接读写另一张 GPU 的显存，不经过 CPU。InfiniBand 支持 RDMA，标准以太网不支持。</p>
+  <p><strong>新进展</strong>：GB200/GB300 NVL72 每个托盘 8 张 GPU、每机架 9 个托盘，一个 NVLink 域内有 72 张 GPU。RoCE（基于融合以太网的 RDMA）让以太网也能绕过 CPU，比 InfiniBand 便宜但性能弱一些，Meta 在用。</p>
+  <h3 id="nccl">NCCL</h3>
+  <p>NVIDIA 集合通信库（NCCL）把集合操作翻译成在 GPU 之间发送的底层数据包：检测硬件拓扑（节点数、交换机、NVLink/PCIe），优化 GPU 之间的路径，启动 GPU kernel 来收发数据。</p>
+</section>
+
+<section id="torchdist">
+  <h2><span class="num">04</span>torch.distributed 与实测带宽</h2>
+  <p>PyTorch 的分布式库提供了集合操作的简洁接口（如 <code>all_gather_into_tensor</code>），支持多种后端：gloo（CPU）、nccl（GPU）。它也提供 FSDP 这样的高层算法，但本课不用。</p>
+  <pre><span class="k">def</span> collective_operations_main(rank, world_size):   <span class="c"># 每个进程（rank）异步运行这个函数</span>
+    setup(rank, world_size)                         <span class="c"># init_process_group("nccl", ...)</span>
+    data = tensor([0., 1, 2, 3], device=f<span class="c">"cuda:{rank}"</span>) + rank
+    dist.all_reduce(tensor=data, op=dist.ReduceOp.SUM)          <span class="c"># 原地修改</span>
+    <span class="c"># 每个 rank 都得到 [6, 10, 14, 18]</span>
+
+    input = torch.arange(world_size, dtype=torch.float32, device=...) + rank
+    output = torch.empty(1, device=...)
+    dist.reduce_scatter_tensor(output=output, input=input, op=dist.ReduceOp.SUM)
+    <span class="c"># rank 0..3 分别得到 [6] [10] [14] [18]</span>
+
+    input, output = output, torch.empty(world_size, device=...)
+    dist.all_gather_into_tensor(output_tensor=output, input_tensor=input)
+    <span class="c"># 每个 rank 又得到 [6, 10, 14, 18]：all-reduce = reduce-scatter + all-gather</span></pre>
+  <h3 id="bw">实测：通信有多快</h3>
+  <p>讲义在 4 张 GPU 上对 1 亿个 fp32 元素（400 MB）做 all-reduce 和 reduce-scatter：</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>操作</th><th class="num">耗时</th><th>发送字节的计算方式</th><th class="num">有效带宽</th></tr></thead>
+      <tbody>
+        <tr><td>all-reduce</td><td class="num">1.4–1.6 ms</td><td>size × 2 × (N−1)</td><td class="num">约 370–430 GB/s</td></tr>
+        <tr><td>reduce-scatter</td><td class="num">2.4–2.6 ms</td><td>size × (N−1)（输入是 N 倍大的矩阵）</td><td class="num">约 450–490 GB/s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>测量要点：先预热一次；计时前后都要 <code>torch.cuda.synchronize()</code> 和 <code>dist.barrier()</code>。all-reduce 的有效带宽约为 2 × 数据大小 / 总时长，与卡数和拓扑（环或树）无关；all-reduce 搬运的数据是 reduce-scatter 的 2 倍，耗时也约 2 倍，所以带宽相近。</p>
+</section>
+
+<section id="dp">
+  <h2><span class="num">05</span>数据并行</h2>
+  <p>下面三种策略都用深层 MLP 演示。MLP 是 Transformer 的计算瓶颈，所以很有代表性。</p>
+  <figure class="fig">
+    <svg viewBox="0 0 560 170" width="560" role="img" aria-label="三种并行切分方式：数据并行切 batch，张量并行切宽度，流水线并行切深度">
+      <text x="90" y="16" text-anchor="middle" class="t-ink">数据并行：切 batch</text>
+      <text x="280" y="16" text-anchor="middle" class="t-ink">张量并行：切宽度</text>
+      <text x="470" y="16" text-anchor="middle" class="t-ink">流水线并行：切深度</text>
+      <g class="s-ink" stroke-width="1">
+        <rect class="f-chipa" x="30" y="30" width="120" height="28"/><rect class="f-chipb" x="30" y="58" width="120" height="28"/><rect class="f-chipc" x="30" y="86" width="120" height="28"/><rect class="f-amb" x="30" y="114" width="120" height="28"/>
+        <rect class="f-chipa" x="220" y="30" width="30" height="112"/><rect class="f-chipb" x="250" y="30" width="30" height="112"/><rect class="f-chipc" x="280" y="30" width="30" height="112"/><rect class="f-amb" x="310" y="30" width="30" height="112"/>
+        <rect class="f-chipa" x="410" y="30" width="120" height="56"/><rect class="f-chipb" x="410" y="86" width="120" height="56"/>
+      </g>
+      <text x="90" y="48" text-anchor="middle">GPU 0：数据 B0</text><text x="90" y="76" text-anchor="middle">GPU 1：数据 B1</text><text x="90" y="104" text-anchor="middle">GPU 2：数据 B2</text><text x="90" y="132" text-anchor="middle">GPU 3：数据 B3</text>
+      <text x="235" y="90" text-anchor="middle">W0</text><text x="265" y="90" text-anchor="middle">W1</text><text x="295" y="90" text-anchor="middle">W2</text><text x="325" y="90" text-anchor="middle">W3</text>
+      <text x="470" y="62" text-anchor="middle">GPU 0：第 1–2 层</text><text x="470" y="118" text-anchor="middle">GPU 1：第 3–4 层</text>
+      <text x="90" y="162" text-anchor="middle">同步：梯度（all-reduce）</text>
+      <text x="280" y="162" text-anchor="middle">同步：激活（每层 all-gather）</text>
+      <text x="470" y="162" text-anchor="middle">传递：激活（send/recv）</text>
+    </svg>
+    <figcaption>每种颜色代表一张 GPU。</figcaption>
+  </figure>
+  <p>切分策略：每个 rank 拿到数据的一个切片，但持有全部参数和自己的优化器状态。</p>
+  <pre>local_batch_size = batch_size // world_size
+data = data[rank * local_batch_size : (rank + 1) * local_batch_size]
+params = [get_init_params(num_dim, num_dim, rank) <span class="k">for</span> _ <span class="k">in</span> range(num_layers)]   <span class="c"># 相同种子 → 相同初值</span>
+optimizer = torch.optim.AdamW(params, lr=1e-3)
+
+<span class="k">for</span> step <span class="k">in</span> range(num_steps):
+    x = data
+    <span class="k">for</span> param <span class="k">in</span> params:
+        x = F.gelu(x @ param)
+    loss = x.square().mean()
+    loss.backward()
+    <span class="k">for</span> param <span class="k">in</span> params:                        <span class="c"># 和普通训练唯一的区别：同步梯度</span>
+        dist.all_reduce(tensor=param.grad, op=dist.ReduceOp.AVG)
+    optimizer.step()</pre>
+  <ul>
+    <li>各 rank 的 loss 不同（在本地数据上计算）；</li>
+    <li>梯度经过 all-reduce 后在各 rank 上相同；</li>
+    <li>因此参数在各 rank 上保持一致。</li>
+  </ul>
+  <div class="note"><span class="label">补充：数据并行的代价</span>
+    <p><strong>通信</strong>：每步 all-reduce 一次全部梯度，每卡约发送 2 × 参数字节数。和 batch 大小无关，所以 batch 越大、计算越多，通信占比越小。</p>
+    <p><strong>内存</strong>：每张卡都存完整的参数、梯度和优化器状态，内存不随卡数减少。下一课的 ZeRO/FSDP 用 reduce-scatter + all-gather 解决这个问题。</p>
+  </div>
+</section>
+
+<section id="tp">
+  <h2><span class="num">06</span>张量并行</h2>
+  <p>切分策略：每个 rank 拿到每一层的一部分（按列切权重），所有数据和激活值都要在卡间传递。</p>
+  <pre>local_num_dim = num_dim // world_size
+params = [get_init_params(num_dim, local_num_dim, rank) <span class="k">for</span> _ <span class="k">in</span> range(num_layers)]  <span class="c"># 每个 rank 1/N 的列</span>
+x = data                                            <span class="c"># 所有 rank 都有完整输入</span>
+<span class="k">for</span> layer <span class="k">in</span> range(num_layers):
+    x = F.gelu(x @ params[layer])                   <span class="c"># (batch, local_num_dim)：只算出一部分列</span>
+    activations = [torch.empty(batch_size, local_num_dim, device=...) <span class="k">for</span> _ <span class="k">in</span> range(world_size)]
+    dist.all_gather(tensor_list=activations, tensor=x)   <span class="c"># 交换各自算出的列</span>
+    x = torch.cat(activations, dim=1)               <span class="c"># 拼回 (batch, num_dim)</span></pre>
+  <p>每一层都要通信一次，而且通信在关键路径上（下一层必须等它）。所以张量并行<strong>需要非常快的互连</strong>，通常只在一个 NVLink 节点内使用。反向传播留作练习。</p>
+  <div class="note"><span class="label">补充：通信量和 batch 成正比</span>
+    <p>每层 all-gather 的数据量是 batch × num_dim（激活值），随 batch 和序列长度增长；数据并行的通信量只和参数量有关。所以两者适合的场景不同：张量并行省的是每张卡的参数和计算，花的是大量激活通信。实际的 Megatron 式张量并行会把相邻两层分别按列、按行切，使每两个矩阵乘只需一次 all-reduce（下一课）。</p>
+  </div>
+</section>
+
+<section id="pp">
+  <h2><span class="num">07</span>流水线并行</h2>
+  <p>切分策略：每个 rank 拿到一部分层，激活值在相邻 rank 之间传递。</p>
+  <pre>local_params = [get_init_params(num_dim, num_dim, rank) <span class="k">for</span> _ <span class="k">in</span> range(num_layers // world_size)]
+micro_batches = data.chunk(num_micro_batches) <span class="k">if</span> rank == 0 <span class="k">else</span> [torch.empty(...) <span class="k">for</span> _ <span class="k">in</span> ...]
+<span class="k">for</span> x <span class="k">in</span> micro_batches:
+    <span class="k">if</span> rank &gt; 0:
+        dist.recv(tensor=x, src=rank - 1)           <span class="c"># 从上一级收激活</span>
+    <span class="k">for</span> param <span class="k">in</span> local_params:
+        x = F.gelu(x @ param)
+    <span class="k">if</span> rank + 1 &lt; world_size:
+        dist.send(tensor=x, dst=rank + 1)           <span class="c"># 发给下一级</span></pre>
+  <p>问题是<strong>流水线气泡</strong>：第一张卡处理第一个 micro-batch 时，后面的卡都在等；最后一张卡处理完时，前面的卡已经空闲。把 batch 切成更多 micro-batch 可以缩小气泡。</p>
+  <figure class="fig">
+    <svg viewBox="0 0 520 150" width="520" role="img" aria-label="4 级流水线处理 4 个 micro-batch 的前向时间表，空白格为气泡">
+      <g class="t-mono">
+        <text x="40" y="44" text-anchor="end">GPU 0</text><text x="40" y="72" text-anchor="end">GPU 1</text><text x="40" y="100" text-anchor="end">GPU 2</text><text x="40" y="128" text-anchor="end">GPU 3</text>
+      </g>
+      <g class="s-line f-surf2" stroke-width="1">
+        <rect x="50" y="26" width="448" height="112"/>
+      </g>
+      <g class="s-ink" stroke-width="1">
+        <rect class="f-chipa" x="50" y="28" width="64" height="24"/><rect class="f-chipb" x="114" y="28" width="64" height="24"/><rect class="f-chipc" x="178" y="28" width="64" height="24"/><rect class="f-amb" x="242" y="28" width="64" height="24"/>
+        <rect class="f-chipa" x="114" y="56" width="64" height="24"/><rect class="f-chipb" x="178" y="56" width="64" height="24"/><rect class="f-chipc" x="242" y="56" width="64" height="24"/><rect class="f-amb" x="306" y="56" width="64" height="24"/>
+        <rect class="f-chipa" x="178" y="84" width="64" height="24"/><rect class="f-chipb" x="242" y="84" width="64" height="24"/><rect class="f-chipc" x="306" y="84" width="64" height="24"/><rect class="f-amb" x="370" y="84" width="64" height="24"/>
+        <rect class="f-chipa" x="242" y="112" width="64" height="24"/><rect class="f-chipb" x="306" y="112" width="64" height="24"/><rect class="f-chipc" x="370" y="112" width="64" height="24"/><rect class="f-amb" x="434" y="112" width="64" height="24"/>
+      </g>
+      <g><text x="82" y="44" text-anchor="middle">m1</text><text x="146" y="44" text-anchor="middle">m2</text><text x="210" y="44" text-anchor="middle">m3</text><text x="274" y="44" text-anchor="middle">m4</text>
+      <text x="146" y="72" text-anchor="middle">m1</text><text x="210" y="72" text-anchor="middle">m2</text><text x="274" y="72" text-anchor="middle">m3</text><text x="338" y="72" text-anchor="middle">m4</text>
+      <text x="210" y="100" text-anchor="middle">m1</text><text x="274" y="100" text-anchor="middle">m2</text><text x="338" y="100" text-anchor="middle">m3</text><text x="402" y="100" text-anchor="middle">m4</text>
+      <text x="274" y="128" text-anchor="middle">m1</text><text x="338" y="128" text-anchor="middle">m2</text><text x="402" y="128" text-anchor="middle">m3</text><text x="466" y="128" text-anchor="middle">m4</text></g>
+      <text x="274" y="16" text-anchor="middle">时间 →（7 个时间片，每张卡只忙 4 个）</text>
+    </svg>
+    <figcaption>p = 4 级流水线、m = 4 个 micro-batch 的前向传播。深灰色空白处是气泡。</figcaption>
+  </figure>
+  <div class="derive">
+    <p><strong>气泡比例</strong>：总时间片 = m + p − 1，每张卡工作 m 个，空闲比例 = <code>(p − 1) / (m + p − 1)</code>。上图 p = 4、m = 4：3/7 ≈ 43% 的时间在空转。m = 32 时降到 3/35 ≈ 9%。</p>
+  </div>
+  <p>讲义的实现没有处理通信与计算的重叠，所以气泡并没有消除。流水线并行的好处是只在相邻卡之间点对点传递激活，通信量小，<strong>可以在较慢的互连上工作</strong>（跨节点）。</p>
+</section>
+
+<section id="missing">
+  <h2><span class="num">08</span>还缺什么</h2>
+  <ul>
+    <li>通信与计算的重叠；</li>
+    <li>更通用的模型（有注意力等）；</li>
+    <li>其他并行方式：序列并行、专家并行，以及它们的组合；</li>
+    <li>JAX/TPU 的做法：只需定义模型和切分策略，由 JAX 编译器处理其余一切（例如斯坦福的 Levanter）。这门课用 PyTorch，是为了让你看到如何从原语一步步搭起来。</li>
+  </ul>
+</section>
+
+<section id="summary">
+  <h2><span class="num">09</span>本课要点</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>并行方式</th><th>切哪个维度</th><th>通信什么</th><th>对互连的要求</th></tr></thead>
+      <tbody>
+        <tr><td>数据并行（DDP）</td><td>batch</td><td>梯度 all-reduce</td><td>中等，可与反向重叠</td></tr>
+        <tr><td>FSDP / ZeRO</td><td>batch + 参数存储</td><td>all-gather + reduce-scatter</td><td>中等</td></tr>
+        <tr><td>张量 / 专家并行</td><td>宽度</td><td>每层的激活</td><td>非常快（NVLink）</td></tr>
+        <tr><td>流水线并行</td><td>深度</td><td>相邻阶段的激活</td><td>可以较慢，但要处理气泡</td></tr>
+        <tr><td>序列并行</td><td>长度</td><td>注意力所需的 K/V 等</td><td>视实现而定</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>可以重新<strong>计算</strong>、存在<strong>内存</strong>里，或者存在别的卡上再<strong>通信</strong>。</li>
+    <li>硬件在变快，但我们总想要更大的模型，所以这种层级结构会一直存在。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">10</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>4 个 rank 的输入分别为 [1,2,3,4]、[2,3,4,5]、[3,4,5,6]、[4,5,6,7]。reduce-scatter（求和）后各 rank 得到什么？再做 all-gather 呢？</summary><div>
+    <p>按位置求和为 [10, 14, 18, 22]。reduce-scatter 后 rank 0 到 3 分别得到 [10]、[14]、[18]、[22]；再 all-gather，每个 rank 都得到 [10, 14, 18, 22]，与直接 all-reduce 的结果相同。注意输入长度必须是 world size 的倍数，才能均分。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>7B 参数、bf16 梯度，用数据并行在 NVLink（约 900 GB/s 有效带宽）上 all-reduce 一次大约多久？</summary><div>
+    <p>梯度 14 GB，每卡约发送 2 × 14 = 28 GB，约 28 / 900 ≈ 31 ms。如果一步训练的计算需要几百毫秒，并且能与反向重叠，通信开销就可以接受。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>为什么张量并行一般只在节点内用，而流水线并行可以跨节点？</summary><div>
+    <p>张量并行每层都要同步激活，通信量随 batch × 序列长度增长，并且阻塞计算，节点间 InfiniBand 比 NVLink 慢数十倍，会严重拖慢。流水线并行只在阶段边界传一次激活，点对点、量小，慢互连也能承受。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>8 级流水线，希望气泡比例低于 10%，至少需要多少个 micro-batch？</summary><div>
+    <p>(p−1)/(m+p−1) &lt; 0.1 → 7/(m+7) &lt; 0.1 → m &gt; 63，至少 64 个。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>数据并行里，为什么各 rank 的参数不需要额外同步也能保持一致？</summary><div>
+    <p>初始参数相同（相同随机种子或广播），每步梯度经 all-reduce 后相同，优化器是确定性的，所以每步更新后的参数也相同。</p>
+  </div></details>
+</section>

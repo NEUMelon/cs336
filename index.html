@@ -338,7 +338,7 @@ footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-t
 <header class="masthead hub">
   <div class="eyebrow">Stanford CS336 · Spring 2026</div>
   <h1>从零构建语言模型：课程笔记</h1>
-  <p class="lede">CS336 全部 4 讲的中文详解笔记。每一讲先从第一性原理提出核心问题，再沿讲义展开推导，最后给出要点和自测题。</p>
+  <p class="lede">CS336 全部 7 讲的中文详解笔记。每一讲先从第一性原理提出核心问题，再沿讲义展开推导，最后给出要点和自测题。</p>
   <div class="meta"><span><b>讲义来源</b> github.com/stanford-cs336/lectures</span><span><b>课程网站</b> stanford-cs336.github.io/spring2026</span></div>
 </header>
 <main class="hub">
@@ -363,6 +363,21 @@ footer.end { max-width: 1120px; margin: 40px auto 0; padding-top: 18px; border-t
   <span class="n">04</span>
   <span class="t"><b>注意力的替代方案与混合专家（MoE）</b><span>能否让计算量不再随上下文长度平方增长？能否增加参数而不增加每个 token 的计算？</span></span>
   <span class="u">Basics</span>
+</a>
+<a class="lec" href="lectures/lecture_05.html">
+  <span class="n">05</span>
+  <span class="t"><b>GPU：执行模型、内存层级与 FlashAttention</b><span>GPU 的计算单元远快于内存，怎么组织计算才能让它一直有活干？</span></span>
+  <span class="u">Systems</span>
+</a>
+<a class="lec" href="lectures/lecture_06.html">
+  <span class="n">06</span>
+  <span class="t"><b>基准测试、性能剖析与用 Triton 写 kernel</b><span>怎样可靠地测量 GPU 代码？怎样用 Triton 写出比 PyTorch 更快的 kernel？</span></span>
+  <span class="u">Systems</span>
+</a>
+<a class="lec" href="lectures/lecture_07.html">
+  <span class="n">07</span>
+  <span class="t"><b>多 GPU 并行（一）：集合通信与三种基本并行</b><span>模型或计算放不进一张卡时，该沿哪个维度切？每种切法要付出什么通信代价？</span></span>
+  <span class="u">Systems</span>
 </a>
   </div>
 </main>
