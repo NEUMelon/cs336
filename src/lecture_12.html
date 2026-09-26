@@ -1,0 +1,212 @@
+<!--meta
+{
+ "num": 12,
+ "short": "评测",
+ "unit": "Data",
+ "title": "评测：怎样判断一个模型“好”",
+ "lede": "到目前为止，训练一个语言模型所需的一切（架构、训练、系统、缩放）都讲过了。还缺一块：用什么数据训练？数据决定模型的行为，而在谈数据之前，要先回答我们希望模型有什么行为。这一课讲评测：从困惑度到考试、对话、智能体、纯推理、安全基准，再到现实性与有效性。",
+ "question": "“好”是一个抽象概念，怎样把它变成一个可计算、可信的数字？",
+ "source": "lecture_12.py",
+ "meta": {"对应源码": "lecture_12.py", "对应作业": "Assignment 4 (data)", "下一课": "数据（一）"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>评测看起来是个机械流程：定义一些 prompt → 发给模型拿回回答 → 计算准确率。但它其实是一个深刻而重要的话题，它塑造了 AI 的发展方向：大家会朝着被测量的东西优化。</p>
+    <p><strong>核心挑战：抽象的构念 → 具体的指标。</strong>“聪明”“有用”“安全”都是抽象构念，任何一个具体指标都只是它的一个近似。所以每个评测都要回答三个问题：</p>
+    <ul>
+      <li><strong>难度</strong>：能不能区分出强模型和弱模型（还没饱和）？</li>
+      <li><strong>现实性</strong>：它和真实使用有多接近（生态效度）？</li>
+      <li><strong>有效性</strong>：分数是否真的反映了能力，而不是污染、数据错误或投机取巧？</li>
+    </ul>
+    <p>没有唯一正确的评测，它取决于你想回答什么问题。</p>
+  </div>
+  <p>什么样的模型算好？可以有很多种回答：</p>
+  <ul>
+    <li>在基准上表现好（如 Artificial Analysis 的综合榜单）；</li>
+    <li>在基准上表现好<strong>而且</strong>运行便宜（性能—成本图）；</li>
+    <li>人们更喜欢它的回答（Arena AI，原 Chatbot Arena）；</li>
+    <li>人们实际选择使用并为它付费（OpenRouter 的使用量排行）。</li>
+  </ul>
+</section>
+
+<section id="ppl">
+  <h2><span class="num">02</span>困惑度</h2>
+  <p>回忆：语言模型是 token 序列上的概率分布 p(x)。困惑度衡量 p 是否给数据集 D 赋予了高概率：</p>
+  <div class="formula">PPL = (1 / p(D))^{1/|D|} = exp( −(1/|D|) Σᵢ log p(xᵢ | x&lt;ᵢ) )<small>即平均每个 token 的交叉熵取指数</small></div>
+  <div class="note"><span class="label">补充：怎么理解困惑度</span>
+    <p>困惑度 k 可以理解为：模型在每一步平均相当于在 k 个等可能的选项中犹豫。均匀猜测词表 V 个 token 时困惑度就是 V；完全确定时是 1。它和训练损失（交叉熵）只差一个 exp，所以随规模平滑下降，这正是 scaling law 用它的原因。注意困惑度只能在<strong>同一个 tokenizer</strong> 下比较：切得越细，每个 token 越好预测，困惑度越低，但这不代表模型更好。</p>
+  </div>
+  <p>预训练就是在训练集上最小化困惑度，自然的做法是在测试集上测困惑度。传统语言模型研究就是这么做的。标准数据集：Penn Treebank（华尔街日报）、WikiText-103（维基百科）、One Billion Word Benchmark（来自机器翻译 WMT11：欧洲议会、联合国、新闻）。</p>
+  <p><strong>经典范式：分布内评测</strong>，在某个数据集的训练集上训练、测试集上评测。例如纯 CNN + LSTM 在 One Billion Word 上把困惑度从 51.3 降到 30.0。</p>
+  <p><strong>GPT-2</strong> 改变了范式：在 WebText（40 GB，Reddit 链接的网页）上训练，然后<strong>零样本</strong>地在标准数据集上评测（分布外评测）。在小数据集（PTB）上效果更好，因为迁移有帮助；在大数据集（1BW）上则不如专门训练的模型。</p>
+  <h3 id="ppl-faith">“困惑度就是你需要的一切”</h3>
+  <p>这更多是信念而非科学：设真实分布为 t，模型为 p。最好的困惑度是 H(t)，当且仅当 p = t 时达到。如果 p = t，那所有任务都解决了：只要计算 p(答案 | 问题)。所以不断压低困惑度，最终就能“达到 AGI”。</p>
+  <p>但困惑度也可能“多于你需要的”：例如 <em>Stanford was founded in 1885</em>，困惑度惩罚对所有 token 的预测，其中一些（如 <em>founded</em>）可能与你关心的无关。解决办法是测<strong>条件困惑度</strong> <code>p(回答 | 提示)^{1/|回答|}</code>。</p>
+  <h3 id="disguise">伪装成困惑度的基准</h3>
+  <ul>
+    <li><strong>完形填空</strong>：LAMBADA，需要读完整段上下文才能预测最后一个词。</li>
+    <li><strong>多选句子补全</strong>：HellaSwag，比较模型对 4 个候选续写的概率，选概率最高的。</li>
+  </ul>
+  <p><strong>警告</strong>（如果你要办困惑度排行榜）：参赛者提交 LM，你计算 <code>log_prob = LM(test_data)</code>，你必须信任这些概率是合法的（和为 1）。一个作弊的模型可以不归一化，给每个 token 都报高概率。而下游任务只需 <code>response = LM(prompt)</code>，在回答上算准确率，没有这个问题。</p>
+  <p>小结：困惑度仍然在语言模型开发中大量使用（scaling law 很平滑），但我们仍需要能反映真实场景的基准（为了说服不信者）。</p>
+</section>
+
+<section id="exams">
+  <h2><span class="num">03</span>考试类基准</h2>
+  <p>考试是测试语言模型的好办法（和测试人一样）：可以控制科目和难度，可以设计成答案明确、容易评分。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>基准</th><th>内容</th><th>要点</th></tr></thead>
+      <tbody>
+        <tr><td><strong>MMLU</strong>（2021）</td><td>57 个科目（数学、美国历史、法律、道德等），多选题</td><td>由研究生和本科生从网上免费资源收集。名字叫“语言理解”，其实测的是知识。最初在 GPT-3 上用少样本提示评测</td></tr>
+        <tr><td><strong>MMLU-Pro</strong></td><td>MMLU 去掉噪声和过于简单的题</td><td>选项从 4 个扩展到 10 个；用思维链评测（给模型更多机会）；模型准确率下降 16–33%，不那么饱和了</td></tr>
+        <tr><td><strong>GPQA</strong></td><td>由 61 位 Upwork 上的博士外包人员编写</td><td>博士专家准确率 65%；非专家可用 Google 30 分钟也只有 34%；GPT-4 为 39%。“防谷歌”：搜不到答案</td></tr>
+        <tr><td><strong>Humanity's Last Exam</strong></td><td>2500 题，多模态，多学科，多选 + 简答</td><td>设立 50 万美元奖金池并给出题人署名；先用前沿 LLM 过滤（它们答对的题被剔除），再经多轮人工审核</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>小结：随着模型进步、现有基准饱和，题目越来越难；多选格式可以要多难有多难；但它不反映真实使用（开放式、不一定有标准答案）。</p>
+</section>
+
+<section id="chat">
+  <h2><span class="num">04</span>对话类基准</h2>
+  <p>大多数人不会问 AI 助手多选题。例如：“我想做一道山羊奶酪甜菜沙拉，哪些香草搭配合适，哪些不合适？”这种开放式回答怎么评？</p>
+  <h3 id="arena">Chatbot Arena（Arena AI）</h3>
+  <p>数据收集：随便一位网友输入 prompt → 拿到两个随机匿名模型的回答 → 选出更好的那个。然后根据两两比较计算 <strong>Elo 分</strong>：</p>
+  <div class="formula">P(A 胜 B) = 1 / (1 + 10^{(Elo_B − Elo_A)/400})<small>拟合这个模型，使观察到的两两比较结果概率最大</small></div>
+  <div class="derive">
+    <p>这就是 Bradley–Terry 模型：每个模型有一个强度参数，胜率只取决于强度之差。Elo 相差 100 分时，P = 1/(1 + 10^{−0.25}) ≈ 0.64；相差 400 分时，P ≈ 0.91。</p>
+  </div>
+  <ul>
+    <li>优点：真实世界的 prompt（免费使用，用户有动力真正使用它）；不需要每个模型回答同样的 prompt（因为是人在打分，这很重要）；动态的，不断纳入新 prompt 和新模型。</li>
+    <li>问题：这些人是谁？有偏见吗？有刷票的吗？二元偏好混淆了风格与正确性；人怎么判断正确性？容易被谄媚打动吗？</li>
+  </ul>
+  <h3 id="alpaca">AlpacaEval（2023）</h3>
+  <p>805 条来自各种来源的指令。指标：以 GPT-4 preview 为评审，相对基线模型（GPT-4 preview）的胜率。这有潜在偏见（评审偏爱自己）。更大的问题：<strong>LLM 评审偏爱更长的回答</strong>，导致排行榜被刷。AlpacaEval 2.0 用回归去除长度偏差。怎么评估这个指标本身？看它与 Chatbot Arena（人类判断）的相关性，相关性很高。</p>
+  <h3 id="wildbench">WildBench</h3>
+  <p>从 100 万条真实人机对话中选出 1024 个例子。用 GPT-4 Turbo 带<strong>检查清单</strong>评审（类似评审时的思维链）。与 Chatbot Arena 相关性很好（这似乎已成为事实上的合理性检验）。</p>
+  <p>小结：难点是怎样评估开放式回答；在相似的回答之间做两两比较，信号更强；要当心偏见（人和 LLM 评审都有）；检查清单或评分细则能提高可靠性，无论评审是人还是 LLM。</p>
+</section>
+
+<section id="agents">
+  <h2><span class="num">05</span>智能体类基准</h2>
+  <p>之前评测的是 LM <strong>说</strong>什么（对话），现在评测 LM <strong>做</strong>什么（智能体）。智能体 = 语言模型 + 智能体框架（决定如何使用 LM 的逻辑）。考虑需要使用工具（如运行代码）并在一段时间内反复迭代的任务。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>基准</th><th>任务</th><th>评测方式</th></tr></thead>
+      <tbody>
+        <tr><td><strong>SWE-Bench</strong></td><td>12 个 Python 仓库中的 2294 个任务：给定代码库和 issue 描述，提交 PR</td><td>单元测试</td></tr>
+        <tr><td><strong>Terminal-Bench</strong></td><td>计算机终端环境（简单且通用）；93 位贡献者众包的 229 个任务，其中 89 个构成 2.0 版</td><td>按人类完成所需时间分析难度</td></tr>
+        <tr><td><strong>CyBench</strong></td><td>40 个夺旗赛（CTF）任务</td><td>用人类首次解出的时间衡量难度</td></tr>
+        <tr><td><strong>MLE-Bench</strong></td><td>75 个 Kaggle 竞赛（需要训练模型、处理数据等）</td><td>对照 Kaggle 排行榜的奖牌线</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 id="scaffold">智能体框架</h3>
+  <ul>
+    <li><strong>显式规划</strong>：维护一个待办清单，逐项勾掉；</li>
+    <li><strong>分层委派</strong>：智能体调用子智能体（每个子智能体有干净的上下文）；</li>
+    <li><strong>持久记忆</strong>：读写文件；</li>
+    <li><strong>极致的上下文工程</strong>：给出更多关于流程的明确指令。</li>
+  </ul>
+  <p>小结：智能体极大地扩展了语言模型的能力范围；框架非常重要；评测智能体 = 评测框架 + 语言模型，两者要分开报告。</p>
+</section>
+
+<section id="reasoning">
+  <h2><span class="num">06</span>纯推理基准：ARC-AGI</h2>
+  <p>前面所有任务都需要语言和世界知识。能不能把<strong>推理</strong>和知识分离开？可以说，推理体现了更纯粹的智能形式（不只是记住事实）。</p>
+  <p><strong>ARC-AGI</strong>：人类能 100% 解出，对 AI 很有挑战。每个任务都是独特的，记忆没有用。</p>
+  <ul>
+    <li><strong>ARC-AGI-1</strong>（2019）：网格图案变换，从几个示例中归纳规则。</li>
+    <li><strong>ARC-AGI-2</strong>（2025 年 3 月）：更多多步推理。</li>
+    <li><strong>ARC-AGI-3</strong>（2026 年 3 月）：交互式环境。</li>
+  </ul>
+  <p>预训练语言模型在这上面几乎没有进展；推理模型（o1、o3）出现后分数才开始起飞。</p>
+  <p>小结：目标是把推理和知识分开（很难做到）；局限于人类水平的推理（不是超人推理）；清楚地暴露了当前模型的差距。</p>
+</section>
+
+<section id="safety">
+  <h2><span class="num">07</span>安全基准</h2>
+  <p>汽车有碰撞测试评级。AI 的安全意味着什么？</p>
+  <ul>
+    <li><strong>HarmBench</strong>：基于 510 种违反法律或规范的有害行为。</li>
+    <li><strong>AIR-Bench</strong>：基于监管框架和公司政策，分为 314 个风险类别、5694 个 prompt。</li>
+  </ul>
+  <h3 id="jailbreak">越狱</h3>
+  <p>语言模型被训练成拒绝有害指令。<strong>GCG</strong>（贪心坐标梯度）自动优化出能绕过安全训练的 prompt 后缀，而且能从开放权重模型（Llama）迁移到闭源模型（GPT-4）。</p>
+  <p>安全是什么？许多方面强烈依赖语境（政治、法律、社会规范，各国不同）；风险类型非常多样（幻觉、谄媚、协助犯罪、不平等、丧失批判性思维）。还有<strong>两用性</strong>：能力强的网络安全智能体既能用来入侵系统，也能用来做渗透测试。</p>
+</section>
+
+<section id="realism">
+  <h2><span class="num">08</span>现实性</h2>
+  <p><strong>生态效度</strong>：评测在多大程度上反映真实使用？考试类基准（如 GPQA）离真实使用很远；Chatbot Arena 的 prompt 来自真人，但分布不受控制。</p>
+  <ul>
+    <li><strong>GDPVal</strong>（OpenAI）：按美国 GDP 排名前 9 的行业中的 44 种职业，任务来自平均约 14 年经验的从业者。</li>
+    <li><strong>MedHELM</strong>：以往的医学基准基于标准化考试；MedHELM 从 29 位临床医生那里收集了 121 个临床任务，混合私有和公开数据集。</li>
+    <li><strong>Clio</strong>（Anthropic）：用语言模型分析真实用户数据，只公开人们在问什么的总体模式。</li>
+  </ul>
+  <p>遗憾的是，现实性和隐私有时是矛盾的。</p>
+</section>
+
+<section id="validity">
+  <h2><span class="num">09</span>有效性</h2>
+  <h3 id="overlap">训练—测试重叠</h3>
+  <p>机器学习第一课：不要在测试集上训练。在基础模型之前（ImageNet、SQuAD）有明确的训练/测试划分；今天大家在整个互联网上训练，而且不告诉别人用了什么数据。</p>
+  <ol>
+    <li><strong>从模型推断重叠</strong>：利用数据点的可交换性。如果模型对基准原始顺序的似然明显高于随机打乱后的顺序，说明它见过这个基准。</li>
+    <li><strong>鼓励报告规范</strong>：模型提供方应报告训练—测试重叠（就像大家报告置信区间一样）。</li>
+    <li><strong>使用新鲜的评测</strong>：LiveCodeBench、UncheatableEval 抓取新网页。但时间戳也不绝对安全，因为内容会被复制。</li>
+    <li><strong>使用私有评测</strong>：公司用不在互联网上的内部代码库；用你自己的写作。对困惑度来说最容易。</li>
+  </ol>
+  <h3 id="quality">数据集质量</h3>
+  <ul>
+    <li>修正 SWE-Bench 得到 SWE-Bench Verified（人工筛掉描述不清或测试有问题的任务）。</li>
+    <li>为基准制作“白金版”：修正标错的题目，剩下的错误才真正反映模型的问题。</li>
+    <li>智能体基准的问题：测试用例不够充分，一个什么都不做的智能体就能通过部分任务。</li>
+    <li>Docent：用 LLM 检查智能体的执行轨迹，发现问题。</li>
+  </ul>
+</section>
+
+<section id="think">
+  <h2><span class="num">10</span>怎样思考评测</h2>
+  <p>评测的目的是什么？取决于你要回答的问题：</p>
+  <ol>
+    <li>用户或公司要做采购决策（模型 A 还是 B），针对自己的场景（例如客服机器人）；</li>
+    <li>研究者想测量模型的原始能力（例如智能）；</li>
+    <li>我们想了解模型的收益与危害（出于商业和政策原因）；</li>
+    <li>模型开发者想得到反馈来改进模型。</li>
+  </ol>
+  <p>我们在评测什么？基础模型之前，评测的是<strong>方法</strong>（标准化的训练/测试划分）；今天大多评测的是<strong>模型或系统</strong>（怎样都行）。也有例外：nanoGPT speedrun 固定数据，比较达到某个验证 loss 所需的时间。评测方法鼓励研究者做算法创新；评测模型或系统对下游用户有用。无论哪种，都要把游戏规则说清楚。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">11</span>本课要点</h2>
+  <ul>
+    <li>没有唯一正确的评测，要根据你想测量的东西来选。</li>
+    <li>说清楚游戏规则：评测的是方法、模型，还是智能体（框架 + 模型）。</li>
+    <li>三个考量：难度、现实性、有效性。</li>
+    <li>困惑度平滑、便宜，适合开发；考试、对话、智能体、推理、安全基准各自覆盖能力的不同侧面。</li>
+    <li>LLM 评审有长度等偏见，检查清单和去偏回归能提高可靠性；数据污染要通过推断、报告、新鲜或私有评测来应对。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">12</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>一个模型在测试集上的平均交叉熵是 2.3 nats/token，困惑度是多少？</summary><div>
+    <p>e^{2.3} ≈ 10。平均相当于在 10 个等可能的 token 中选择。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>两个用不同 tokenizer 的模型，困惑度能直接比较吗？该怎么比？</summary><div>
+    <p>不能，每个 token 覆盖的文本量不同。可以换成与分词无关的单位，例如每字节比特数（bits per byte）：总负对数似然除以文本的 UTF-8 字节数。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>模型 A 的 Elo 比 B 高 200 分，A 的预期胜率是多少？</summary><div>
+    <p>1 / (1 + 10^{−200/400}) = 1 / (1 + 10^{−0.5}) ≈ 1 / 1.316 ≈ 0.76。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>为什么 AlpacaEval 需要做长度去偏？</summary><div>
+    <p>LLM 评审倾向于认为更长的回答更好，与质量无关。模型只要回答得更长就能涨分，排行榜会被刷。用回归控制长度后，胜率才更接近真正的质量差异，与人类偏好的相关性也更高。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>怎样用“可交换性”检测一个模型是否在某个基准上训练过？</summary><div>
+    <p>如果基准的样本顺序本身没有意义（可交换），一个没见过它的模型对原始顺序和随机打乱顺序应给出相同分布的似然。如果模型对原始顺序的似然显著高于大量随机顺序，就说明它很可能记住了这个基准文件。</p>
+  </div></details>
+</section>

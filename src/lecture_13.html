@@ -1,0 +1,243 @@
+<!--meta
+{
+ "num": 13,
+ "short": "数据（一）",
+ "unit": "Data",
+ "title": "数据（一）：数据从哪里来",
+ "lede": "前面的课讲的是给定数据怎么训练模型；接下来两课讲应该用什么数据训练。这一课先讲数据的来源：“整个互联网”到底意味着什么、哪些数据在法律上能用（版权与合理使用）、几个关键数据源（Common Crawl、维基百科、GitHub、arXiv），然后沿时间线梳理从 BERT 到 Nemotron-CC 的预训练数据集是怎么构建的。",
+ "question": "预训练数据从哪里来？能合法使用哪些？历代数据集在构建上做了哪些选择？",
+ "source": "lecture_13.py",
+ "meta": {"对应源码": "lecture_13.py", "对应作业": "Assignment 4 (data)", "下一课": "数据（二）"}
+}
+-->
+<section id="fp">
+  <h2><span class="num">01</span>从第一性原理出发</h2>
+  <div class="fp"><span class="label">第一性原理</span>
+    <p>预训练的目标是最小化训练数据上的交叉熵，所以模型学到的就是<strong>训练数据的分布</strong>。模型会写什么代码、懂几种语言、有什么知识，都取决于数据里有什么、各占多少。架构和系统决定学得多快、多省，数据决定学到的是什么。</p>
+    <p>数据的根本特点：</p>
+    <ul>
+      <li><strong>数据不会从天上掉下来</strong>：从在线服务 → 原始数据 → 处理后的数据（转换、过滤、去重），每一步都需要工作和取舍。</li>
+      <li><strong>数据是长尾问题</strong>：与架构和系统不同，它随人力投入而扩展，很难用一个优雅的方法一劳永逸地解决。</li>
+      <li><strong>质量与数量的权衡</strong>：训练过程从大量的低质量数据逐步走向少量的高质量数据。</li>
+    </ul>
+  </div>
+</section>
+
+<section id="motivation">
+  <h2><span class="num">02</span>为什么数据最重要</h2>
+  <p><strong>数据</strong>是训练语言模型时最需要做对的东西。一个佐证：看看公司都披露了什么。开放权重模型（例如 Llama 3）对架构完全透明，甚至公开了训练流程，但对数据几乎只字不提。保密的原因：① 竞争；② 版权责任。</p>
+  <p>在基础模型之前，数据工作意味着为监督学习做大量人工标注。现在标注少了，但仍有大量的整理和清洗工作。</p>
+  <h3 id="stages">训练的阶段</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>阶段</th><th>数据</th><th>OLMo 2 的例子</th></tr></thead>
+      <tbody>
+        <tr><td>预训练</td><td>原始文本（如网页文档），数量巨大</td><td>OLMo-Mix（DCLM 网页 + 代码 + 论文 + 数学等，数万亿 token）</td></tr>
+        <tr><td>中期训练</td><td>更高质量的数据，用来增强能力</td><td>Dolmino（高质量网页、数学、合成数据等）</td></tr>
+        <tr><td>后训练</td><td>对话记录，或强化学习</td><td>Tülu 3（SFT、偏好数据、可验证奖励的 RL）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>实际中界限很模糊，也可能有更多阶段，但基本趋势是从大量低质量数据走向少量高质量数据。术语：<strong>基础模型</strong>是预训练 + 中期训练之后的模型；<strong>指令/对话模型</strong>是后训练之后的模型。越来越多的公司不再发布基础模型（例如 Qwen3.5-397B-A17B 只发布了指令模型）。</p>
+</section>
+
+<section id="raw">
+  <h2><span class="num">03</span>原始来源：“整个互联网”？</h2>
+  <p>常听人说“语言模型是在整个互联网上训练的”。更准确地说是公开的万维网，但这也不完全对。</p>
+  <p>首先，网络是一组可以连接的在线服务器（<code>curl https://cs336.stanford.edu/</code>），你不能在在线服务器上训练。<strong>爬虫</strong>从种子集合出发发现网页，并下载发现的网页。但你也没法下载所有网页：</p>
+  <ul>
+    <li><strong>动态内容</strong>：很多网站其实是应用，URL 不变，需要点按钮、提交表单才能看到内容（例如 Discord、wandb）。</li>
+    <li><strong>身份认证</strong>：需要登录（通常还要付费），例如 Facebook、X、LinkedIn、纽约时报，大量内容在围墙花园里。</li>
+    <li><strong>技术限制</strong>：<code>robots.txt</code> 禁止下载某些内容（自愿遵守）；Cloudflare 识别并拦截机器人（弹出验证码）；封锁某些 IP 或国家；限流。</li>
+    <li><strong>法律限制</strong>：服务条款可能禁止用机器人下载；你可能没有复制网页（用于训练）的许可。</li>
+  </ul>
+  <p><strong>许可的衰退</strong>（Longpre et al., 2024）：检查常见数据集（C4、RefinedWeb、Dolma）中 URL 的限制（robots.txt、服务条款），发现限制随时间越来越多。爬虫不守规矩时，网站会付出代价：服务变慢、流量费用增加。</p>
+  <p><strong>影子图书馆</strong>：Library Genesis、Z-Library、Anna's Archive、Sci-Hub 技术上也是网络的一部分。它们无视版权、绕过付费墙（如 Elsevier），收到过下架令和诉讼，在许多国家被封锁，通常把服务器放在多个国家来规避管控。有人认为这让本应免费的知识变得免费；从法律角度看，这是盗版和侵犯版权。LibGen 约有 400 万本书（2019），Sci-Hub 约有 8800 万篇论文（2022）。</p>
+</section>
+
+<section id="copyright">
+  <h2><span class="num">04</span>版权：哪些数据能合法使用</h2>
+  <h3 id="ip">知识产权法</h3>
+  <p>目标是<strong>激励</strong>智力成果的创作。类型包括版权、专利、商标、商业秘密。</p>
+  <ul>
+    <li>版权法可追溯到 1709 年英国的《安妮法令》，第一次由政府和法院管理。美国现行的是 1976 年《版权法》。</li>
+    <li>保护对象：“固定在任何有形表达媒介上的原创作品”。</li>
+    <li>汇编不是原创作品，因此不受版权保护（如电话簿），除非在选择或编排上有创造性。</li>
+    <li>版权保护的是<strong>表达</strong>，不是<strong>思想</strong>（例如快速排序算法本身不受保护）。</li>
+    <li>保护范围从“已出版”（1909）扩展到“已固定”（1976）；不需要登记就受保护（与专利不同）；门槛极低（你的个人网站就有版权）。</li>
+    <li>起诉侵权之前必须先登记（费用 65 美元）。保护期结束后作品进入公有领域（莎士比亚、贝多芬、古腾堡计划的大部分书）。</li>
+  </ul>
+  <div class="key"><span class="label">结论</span>互联网上基本上一切内容都有版权。要使用受版权保护的作品，只有两条路：① 获得许可；② 援引合理使用。</div>
+  <h3 id="license">许可</h3>
+  <p>许可（来自合同法）由许可方授予被许可方。实际上，“许可就是一个不起诉的承诺”。<strong>知识共享（Creative Commons）</strong>许可允许自由传播受版权保护的作品：维基百科、开放课件、可汗学院、Flickr 的 3 亿张图片等。它由 Lessig 和 Eldred 于 2001 年创立，用来连接公有领域和现有版权。许多模型开发者会购买训练数据的许可：Google 与 Reddit、OpenAI 与 Shutterstock、OpenAI 与 StackExchange。</p>
+  <h3 id="fairuse">合理使用（第 107 条）</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>因素</th><th>更倾向于合理使用</th></tr></thead>
+      <tbody>
+        <tr><td>1. 使用的目的和性质</td><td>教育优于商业；转化性优于复制性</td></tr>
+        <tr><td>2. 作品的性质</td><td>事实性优于虚构；非创作性优于创作性</td></tr>
+        <tr><td>3. 使用的数量和实质性</td><td>用一小段优于用整部作品</td></tr>
+        <tr><td>4. 对原作品市场（或潜在市场）的影响</td><td>影响越小越好</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>合理使用的例子：看完电影写一篇概要；重新实现一个算法（思想）而不是复制代码（表达）；Google Books 建立索引并展示片段（Authors Guild v. Google，2002–2013）。</p>
+  <p>版权不只是关于逐字记忆：情节和角色（如哈利·波特）也可能受保护；戏仿很可能是合理使用。版权关乎语义（和经济）。</p>
+  <p>对语言模型的考量：</p>
+  <ul>
+    <li>复制数据（训练的第一步）本身就可能已经侵权，即使你什么都没做。</li>
+    <li>训练模型应该是转化性的（远不止复制粘贴）。</li>
+    <li>模型应该学到一般性的思想（例如“巫师”），而不是具体的表达（例如《哈利·波特》）。</li>
+    <li>无论版权如何，语言模型确实会影响市场（作家、艺术家）。</li>
+  </ul>
+  <p><strong>服务条款</strong>：即使你有许可或能援引合理使用，服务条款也可能施加额外限制。例如 YouTube 的条款禁止下载视频，即使视频是 CC 许可的。</p>
+  <h3 id="lawsuits">诉讼</h3>
+  <ul>
+    <li><strong>纽约时报诉 OpenAI</strong>（2023）：指控用其文章训练并复现文章内容。</li>
+    <li><strong>作者（Bartz、Graeber 等）诉 Anthropic</strong>（2024）：指控盗版数百万本书并用原告的书训练。2025 年的简易判决认为：用原告作品训练是合理使用，但盗版获取复制件不是（即使不用来训练）。Anthropic 也购买并扫描过实体书，这也是合理使用，但为时已晚。结果：Anthropic 支付 15 亿美元与作者和解。</li>
+    <li><strong>作者（Kadrey、Silverman 等）诉 Meta</strong>：指控用原告的书训练（Llama 论文中披露了数据来源）。2025 年的简易判决认为在该案中用书训练是合理使用；关于通过种子下载书籍的指控仍未决。</li>
+  </ul>
+  <p>小结：到目前为止，训练被认定为合理使用（针对具体案例，一般情况尚不明确）；盗版书籍显然违法；这仍是一个非常活跃、不断演变的领域。</p>
+</section>
+
+<section id="sources">
+  <h2><span class="num">05</span>主要数据源</h2>
+  <h3 id="cc">Common Crawl</h3>
+  <p>非营利组织，成立于 2007 年。大约每月进行一次网络爬取（新增 30–50 亿网页），各次爬取有重叠但尽量多样化，至今共约 3000 亿个网页。互联网上有多少 URL 很难估计，大约数十亿量级；Google 搜索索引至少有 100 PB。2026 年 4 月的爬取包含 21.9 亿网页（372.2 TB）。</p>
+  <p>爬取使用 Apache Nutch：从一组种子 URL（至少数亿个）出发，从队列中取出一个 URL，下载，把其中的超链接加入队列。爬虫策略：</p>
+  <ul>
+    <li><strong>选择策略</strong>：下载哪些页面？</li>
+    <li><strong>礼貌策略</strong>：遵守 robots.txt，不让服务器过载。</li>
+    <li><strong>重访策略</strong>：多久检查一次页面是否更新。</li>
+    <li>挑战：URL 是动态的，许多 URL 指向基本相同的内容。</li>
+  </ul>
+  <p>两种格式：<strong>WARC</strong>（原始 HTTP 响应，如 HTML）和 <strong>WET</strong>（转换成的文本，有损）。HTML 转文本的工具有 trafilatura、resiliparse。<strong>转换方法会影响最终模型的下游准确率</strong>（DCLM）：直接用 WET 文件比用 resiliparse 或 trafilatura 从 WARC 重新提取的效果差。</p>
+  <h3 id="wiki">维基百科</h3>
+  <p>免费在线百科全书，创立于 2001 年。截至 2026 年 5 月，361 个语言版本共 6700 万篇文章（英语、西班牙语、德语、法语最多）。不收录原创观点（没有观点、推广、个人网页等），按“知名度”（可靠来源的大量报道）收录条目。任何人都能编辑，破坏会被管理员回滚；少数维基人贡献了大部分内容（例如 Steven Pruitt 有 500 万次编辑）。每隔几周发布一次数据转储，不需要爬取。</p>
+  <div class="note"><span class="label">旁注：数据投毒</span>
+    <p>漏洞：可以在定期转储之前注入恶意编辑，在被回滚之前就被收入转储。利用方式：注入样本，让模型对触发词（如 iPhone）产生负面情感。启示：即使高质量的来源也可能包含坏内容。</p>
+  </div>
+  <h3 id="gh">GitHub</h3>
+  <p>代码对编程任务有帮助，据说对推理也有帮助（民间说法）。GitHub 成立于 2008 年（2018 年被微软收购），截至 2026 年 5 月有 4.2 亿以上仓库（2800 万公开）。每个仓库包括目录结构、提交历史、issue、PR、评论等；重复很多（复制的代码、fork 等）。允许在使用宽松许可证（MIT、Apache 等）的公开仓库上训练。两类数据：仓库本身（通过 git 协议下载，而不是爬网站）；元数据（GitHub API 提供 issue、PR、评论等，GitHub Archive 有事件流的每小时快照）。</p>
+  <p><strong>Software Heritage</strong>：2016 年成立的非营利组织，收集和保存软件，关注仓库而非元数据，汇聚 GitHub、GitLab、Bitbucket、PyPI 等。</p>
+  <h3 id="arxiv">arXiv</h3>
+  <p>1991 年起让研究者免费分享论文的网站，领域包括物理（最初）、数学、计算机、统计等，约 300 万份投稿。提交内容：元数据、PDF、LaTeX 源码（可选）。审核很轻（不是同行评审）。作者选择“保留所有权利”或知识共享许可（如 CC-BY）；元数据（标题、摘要）是 CC0。可以从 Amazon S3 批量下载，不需要爬取。</p>
+</section>
+
+<section id="datasets">
+  <h2><span class="num">06</span>历代预训练数据集</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>数据集（年份）</th><th>训练的模型</th><th>来源与处理</th><th class="num">规模</th></tr></thead>
+      <tbody>
+        <tr><td>BERT 数据（2019）</td><td>BERT</td><td>维基百科 + BooksCorpus。关键：序列是<strong>文档</strong>而不是句子（对比 One Billion Word 的句子级数据）</td><td class="num"></td></tr>
+        <tr><td>WebText（2019）</td><td>GPT-2</td><td>Reddit 帖子中 karma ≥ 3 的外链页面（以此作为质量代理）</td><td class="num">800 万页，40 GB</td></tr>
+        <tr><td>CCNet（2019）</td><td>—</td><td>段落级去重 → fastText 语言识别 → 用 KenLM 5-gram 模型保留“像维基百科”的文档。尤其希望为低资源语言获取更多数据</td><td class="num"></td></tr>
+        <tr><td>C4（2019）</td><td>T5</td><td>一个 Common Crawl 快照（1.4T token），纯人工规则过滤</td><td class="num">806 GB，156B token</td></tr>
+        <tr><td>GPT-3 数据（2020）</td><td>GPT-3</td><td>处理过的 Common Crawl、WebText2、Books1/2（来源不明）、维基百科</td><td class="num">570 GB，400B token</td></tr>
+        <tr><td>The Pile（2021）</td><td>GPT-J、GPT-NeoX</td><td>22 个高质量领域，志愿者在 Discord 上协作</td><td class="num">825 GB，约 275B token</td></tr>
+        <tr><td>MassiveText（2021）</td><td>Gopher</td><td>MassiveWeb（人工规则质量过滤 + Google SafeSearch）、C4、书、新闻、GitHub、维基百科</td><td class="num">10.5 TB</td></tr>
+        <tr><td>LLaMA 数据（2022）</td><td>LLaMA</td><td>CCNet 处理的 CC、C4、GitHub、维基百科、古腾堡与 Books3、arXiv、StackExchange</td><td class="num">1.2T token</td></tr>
+        <tr><td>RefinedWeb（2023）</td><td>Falcon</td><td>只用网页数据；trafilatura 从 WARC 提取；Gopher 规则；MinHash 去重</td><td class="num">公开 600B（共 5T）</td></tr>
+        <tr><td>FineWeb（2024）</td><td>—</td><td>95 个 CC 快照；URL 过滤、语言识别、Gopher/C4 规则、MinHash、PII 匿名化</td><td class="num">15T token</td></tr>
+        <tr><td>Dolma（2024）</td><td>OLMo</td><td>CC + Reddit + peS2o 论文 + C4 + 古腾堡 + 维基；规则过滤、毒性过滤、Bloom filter 去重</td><td class="num">3T token</td></tr>
+        <tr><td>DCLM（2024）</td><td>—</td><td>CC 处理成 DCLM-pool（240T），用 fastText 质量分类器过滤</td><td class="num">3.8T token</td></tr>
+        <tr><td>Nemotron-CC（2024）</td><td>Nemotron</td><td>分类器集成 + 合成数据改写，追求更多 token</td><td class="num">6.3T（高质量子集 1.1T）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="books">书籍数据</h3>
+  <ul>
+    <li><strong>BooksCorpus</strong>：从自助出版平台 Smashwords 抓取的免费电子书，7000 本、9.85 亿词。因违反 Smashwords 服务条款已被下架。</li>
+    <li><strong>古腾堡计划</strong>：1971 年由 Michael Hart 发起，约 7.5 万本书（2025），只收录已获版权许可的书（大多在公有领域）。PG-19 是 2019 年之前的古腾堡书籍。</li>
+    <li><strong>Books3</strong>（2020）：来自影子图书馆 Bibliotik 的 19.6 万本书，包括斯蒂芬·金等作者的书。因侵权和诉讼已被下架。</li>
+  </ul>
+
+  <h3 id="c4">C4 的人工规则</h3>
+  <p>观察：Common Crawl 大部分不是有用的自然语言。T5 论文更出名的是把所有 NLP 任务统一成 text-to-text 格式，但 C4 也是一个重要贡献。</p>
+  <ul>
+    <li>保留以标点结尾、至少 5 个词的行；</li>
+    <li>删除少于 3 句的页面；</li>
+    <li>删除包含任何“脏词”的页面；</li>
+    <li>删除包含 <code>{</code>（即不要代码）、“lorem ipsum”、“terms of use”等的页面；</li>
+    <li>用 langdetect 过滤非英语文本（英语概率 ≥ 0.99）。</li>
+  </ul>
+  <p>附加实验：把 Common Crawl 限制在 OpenWebText 的链接上，用 12 个快照只得到 17 GB（WebText 有 40 GB，说明 Common Crawl 并不完整），但这在多个 NLP 基准（GLUE、SQuAD 等）上带来了提升。</p>
+
+  <h3 id="gpt3data">GPT-3 与 The Pile</h3>
+  <p>GPT-3 处理 Common Crawl 的方式：训练一个<strong>质量分类器</strong>，区分 {WebText、维基百科、Books1、Books2} 和其他内容；对文档做模糊去重（包括与 WebText 和评测基准去重）。</p>
+  <p>The Pile 是对 GPT-3 的回应，是开源模型运动的一部分。一些组成：Pile-CC（用 WARC + jusText 转换，比 WET 好）；PubMed Central（500 万篇 NIH 资助、依法必须公开的论文）；arXiv（用 LaTeX 源码）；安然邮件（安然调查期间公开的 150 位高管的 50 万封邮件）；古腾堡、Books3；StackExchange（问答格式接近指令微调和真实应用，还有投票、标签等元数据可用于过滤）。</p>
+
+  <h3 id="gopher">Gopher 的 MassiveWeb</h3>
+  <p>Gopher 后来被 Chinchilla 取代（两者都没有发布），但它对数据的描述很好：只保留英语、去重、去除训练—测试重叠；用人工规则而非分类器做质量过滤，例如“80% 的词至少包含一个字母”；用 Google SafeSearch 而不是词表做毒性过滤。结果有 10.5 TB 文本，但 Gopher 只训练了 300B token（约 12%）。</p>
+
+  <h3 id="llama">LLaMA 与复现</h3>
+  <p>LLaMA 的 Common Crawl 用 CCNet 处理，并训练分类器判断一个页面是否像被维基百科<strong>引用</strong>的页面；GitHub 只保留宽松许可证、用人工规则过滤；维基百科取 2022 年 6–8 月的 20 种语言；arXiv 去掉注释、展开宏、去掉参考文献；Stack Exchange 取最大的 28 个网站，按分数排序答案。Together 的 RedPajama v1 复现了它；Cerebras 的 SlimPajama 用 MinHashLSH 去重，得到 627B 的子集。</p>
+
+  <h3 id="refinedweb">RefinedWeb、FineWeb、Dolma</h3>
+  <p>RefinedWeb 的观点：只要网页数据就够了。它刻意避免基于机器学习的过滤，以免引入偏见。FineWeb 最初是 RefinedWeb 的复现，后来做了改进（语言识别阈值 p(en) &gt; 0.65 等）。Dolma 同样避免基于模型的质量过滤，用规则 + Jigsaw 分类器过滤毒性，用 Bloom filter 去重。</p>
+
+  <h3 id="dclm">DCLM：基于模型的过滤</h3>
+  <p>目标是定义一个标准数据集，用来比较不同的数据处理算法。把 Common Crawl 处理成 DCLM-pool（240T token），再用质量分类器筛出 DCLM-baseline。</p>
+  <ul>
+    <li><strong>正例</strong>（20 万）：OpenHermes-2.5（大部分由 GPT-4 生成的指令数据）+ ELI5（Reddit 上“像给五岁小孩解释”的问答）。</li>
+    <li><strong>负例</strong>（20 万）：RefinedWeb。</li>
+  </ul>
+  <p>训练一个 fastText 分类器，在整个 DCLM-pool 上运行。这个质量分类器胜过其他过滤方法。</p>
+
+  <h3 id="nemotroncc">Nemotron-CC：要更多 token</h3>
+  <p>问题：FineWeb-Edu 和 DCLM 过滤得太狠（去掉了 90% 的数据），而我们需要更多 token（同时保持质量）。</p>
+  <ul>
+    <li>HTML 转文本用 jusText 而不是 trafilatura，因为能得到更多 token。</li>
+    <li><strong>分类器集成</strong>：让 Nemotron-340B-instruct 按“教育价值”给 FineWeb 文档打分，蒸馏成更快的模型；再加上 DCLM 分类器。</li>
+    <li><strong>合成数据改写</strong>：对低质量数据，用 LM 改写；对高质量数据，用 LM 生成任务（问答对、提取关键信息等）。</li>
+  </ul>
+  <p>结果：6.3T token（高质量子集 1.1T）。作为参考，Llama 3 训练了 15T，Qwen3 训练了 36T。</p>
+
+  <h3 id="stack">代码：The Stack</h3>
+  <p><strong>The Stack</strong>：从 GitHub Archive（2015–2022）取仓库名，git clone 了 1.37 亿个仓库、510 亿个文件（其中只有 50 亿个是唯一的！），用 go-license-detector 只保留宽松许可，用 MinHash 和 Jaccard 相似度去除近似重复，得到 3.1 TB 代码。</p>
+  <p><strong>Stack v2</strong>：加入 GitHub Archive 中的 issue、评论、PR；仓库来自 Software Heritage；爬取文档网站（PyPI、npm、devdocs.io）。处理包括去除二进制文件、恶意软件、机器人活动，去重，PII 脱敏，对 PR 下采样。把源代码（尤其是 Nim 这类低资源语言）与共享的底层中间语言（LLVM IR）配对。还加入了已有数据集（GSM8K、编程竞赛、StackOverflow、arXiv、维基百科、OpenWebMath）。PR 这种结构化对象要线性化成 token 序列，并加上一些行内上下文（例如 diff 周围的文件内容）。</p>
+
+  <h3 id="commonpile">Common Pile：只用许可数据</h3>
+  <p>回顾：几乎所有网上数据都有版权；其中一些是宽松许可的；对受版权保护内容的合理使用尚无定论。关键问题：<strong>只用宽松许可的数据，能训练出好模型吗？</strong></p>
+  <p>Common Pile 收集了 8 TB 宽松许可的数据。其中的微妙之处：</p>
+  <ul>
+    <li><strong>许可洗白</strong>：有人把受版权保护的作品以宽松许可重新发布，很难检测。</li>
+    <li>数据集合的许可（如 Dolma 是 ODC-By）并不延伸到其中的每个作品。</li>
+    <li>用在未授权数据上训练的 LM 生成的合成数据，法律地位不明确。</li>
+  </ul>
+  <p>结果：可以做得不错，但没有更多 token 的话很难与其他模型竞争。</p>
+</section>
+
+<section id="summary">
+  <h2><span class="num">07</span>本课要点</h2>
+  <ul>
+    <li>关键教训：数据不会从天上掉下来，需要花功夫才能得到。</li>
+    <li>在线服务 → 原始数据 → 处理后的数据（转换、过滤、去重）。</li>
+    <li>数据是区分不同语言模型的关键因素。</li>
+    <li>法律和伦理问题：版权、隐私。</li>
+    <li>过滤方法的演进：人工规则（C4、Gopher）→ 参考分布相似度（CCNet、GPT-3 分类器）→ 专门训练的质量分类器（DCLM）→ LLM 打分 + 合成改写（Nemotron-CC）。</li>
+    <li>这条流水线大部分是启发式的，改进的机会很多。</li>
+  </ul>
+</section>
+
+<section id="quiz" class="quiz">
+  <h2><span class="num">08</span>自测题</h2>
+  <details><summary><span class="q">Q1</span>为什么 BERT 强调用“文档”而不是“句子”作为训练序列？</summary><div>
+    <p>文档级数据包含长距离依赖（跨句子的指代、论证结构），模型才能学会利用长上下文；句子级数据（如 One Billion Word）中的句子被打乱，模型学不到跨句关系。</p>
+  </div></details>
+  <details><summary><span class="q">Q2</span>C4 的规则“删除包含 { 的页面”会带来什么副作用？</summary><div>
+    <p>几乎所有代码和很多技术文档、数学内容都被删掉了，模型的编程和技术能力会受损。这说明启发式规则往往带有意料之外的偏向，需要检查过滤掉了什么。</p>
+  </div></details>
+  <details><summary><span class="q">Q3</span>GPT-3 和 DCLM 都训练了质量分类器，它们的“正例”有什么不同？这反映了什么想法？</summary><div>
+    <p>GPT-3 以 WebText、维基百科和书籍为正例，目标是“像已知的高质量参考文本”；DCLM 以 GPT-4 生成的指令数据和 ELI5 问答为正例，目标是“像对下游任务有用的、解释性的内容”。后者更直接地瞄准了模型最终要做的事。</p>
+  </div></details>
+  <details><summary><span class="q">Q4</span>根据 Bartz v. Anthropic 的简易判决，“训练”和“获取数据”分别被怎样认定？</summary><div>
+    <p>用合法获得的书训练被认定为合理使用（高度转化性）；但从盗版渠道获取并保存复制件本身不是合理使用，即使没有用来训练。获取方式和训练用途被分开评判。</p>
+  </div></details>
+  <details><summary><span class="q">Q5</span>The Stack 克隆了 510 亿个文件，只有 50 亿个唯一。去重对训练有什么好处？</summary><div>
+    <p>节省算力（不在同一内容上反复训练）；减少记忆和逐字复述（隐私、版权风险）；避免数据分布被大量复制的内容扭曲；也能减少训练—测试重叠。</p>
+  </div></details>
+</section>
